@@ -1,0 +1,47 @@
+package: healthcare
+version: 0.1.0
+label: Healthcare
+description: "Patients, practitioners' hours, appointments without clashes, consent by form version, and visits billed through ERP with follow-ups"
+depends: [core, selling, accounting]
+
+modules:
+  - name: healthcare
+    label: Healthcare
+    icon: stethoscope
+    order: 54
+    items: [Appointment, Patient, PatientConsent, Practitioner, AppointmentType, ConsentForm, FeeValidity, HealthcareSettings]
+
+roles:
+  - name: Healthcare Manager
+    description: Sets up practitioners, their hours, appointment types and consent forms, and sees everything.
+    permissions:
+      - {entity: HealthcareSettings, read: true, write: true, create: true}
+      - {entity: Practitioner, read: true, write: true, create: true}
+      - {entity: AppointmentType, read: true, write: true, create: true}
+      - {entity: ConsentForm, read: true, write: true, create: true}
+      - {entity: Patient, read: true, write: true, create: true, export: true}
+      - {entity: PatientConsent, read: true, write: true, create: true}
+      - {entity: Appointment, read: true, write: true, create: true, export: true}
+      - {entity: FeeValidity, read: true}
+      - {entity: Item, read: true}
+      - {entity: Company, read: true}
+      - {entity: Customer, read: true}
+      - {entity: SalesInvoice, read: true}
+  - name: Clinic Reception
+    description: Registers patients, books and checks them in, and takes their consent.
+    permissions:
+      - {entity: Patient, read: true, write: true, create: true}
+      - {entity: PatientConsent, read: true, write: true, create: true}
+      - {entity: Appointment, read: true, write: true, create: true}
+      - {entity: Practitioner, read: true}
+      - {entity: AppointmentType, read: true}
+      - {entity: ConsentForm, read: true}
+      - {entity: FeeValidity, read: true}
+  - name: Practitioner
+    description: Sees their patients and completes their visits.
+    permissions:
+      - {entity: Patient, read: true}
+      - {entity: Appointment, read: true, write: true}
+      - {entity: PatientConsent, read: true}
+      - {entity: Practitioner, read: true}
+      - {entity: AppointmentType, read: true}

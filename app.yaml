@@ -1,0 +1,33 @@
+id: healthcare
+name: Healthcare
+version: 0.1.0
+publisher: cbferrum
+summary: "Patients, practitioners' hours, appointments without clashes, consent by form version, and visits billed through ERP with follow-ups"
+description: README.md
+categories: [industry, finance]
+license: AGPL-3.0-only
+homepage: https://github.com/CBFerrum/ferrum-app-healthcare
+support: https://github.com/CBFerrum/ferrum-app-healthcare/issues
+runtime: native
+platform: ">=0.3.2, <0.4"
+# Records of ERP (customers, items, invoices): installing it installs ERP.
+requires: {erp: ">=0.1"}
+packages: [healthcare]
+uninstall: ask
+# Its own interface at /healthcare/: the day's appointments by practitioner.
+ui:
+  dist: ui/dist
+contributes:
+  shell.app:
+    - id: healthcare
+      route: healthcare
+      title: Healthcare
+      description: Appointments, patients, consent and billing
+      icon: stethoscope
+      color: "#0e7490"
+      roles: [Healthcare Manager, Clinic Reception, Practitioner]
+  shell.open:
+    - {id: healthcare, package: healthcare, path: "healthcare/e/{entity}/{id}", list: "healthcare/e/{entity}"}
+  shell.create:
+    - {id: appointment, label: Appointment, path: healthcare/e/Appointment/new, entity: Appointment}
+    - {id: patient, label: Patient, path: healthcare/e/Patient/new, entity: Patient}

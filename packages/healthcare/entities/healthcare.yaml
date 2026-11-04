@@ -1,0 +1,141 @@
+- name: HealthcareSettings
+  label: Healthcare Settings
+  kind: settings
+  module: healthcare
+  description: "Where visits are billed from, and how long a paid visit covers follow-ups."
+  fields:
+    - {name: company, type: link, to: Company, required: true}
+    - {name: consultation_item, type: link, to: Item, required: true, description: "What a visit is billed as, unless its practitioner says otherwise"}
+    - {name: follow_up_days, type: int, default: 7, description: "Days after a billed visit in which follow-ups with the same practitioner are covered"}
+    - {name: follow_up_visits, type: int, default: 1, description: "How many follow-ups a billed visit covers"}
+  form:
+    - {label: Billing, fields: [company, consultation_item]}
+    - {label: Follow-ups, fields: [follow_up_days, follow_up_visits]}
+
+- name: Patient
+  label: Patient
+  label_plural: Patients
+  kind: master
+  module: healthcare
+  title_field: patient_name
+  fields:
+    - {name: patient_name, type: data, required: true, in_list: true}
+    - {name: sex, type: select, options: [Female, Male, Other, Not Stated], default: Not Stated, in_list: true}
+    - {name: date_of_birth, type: date}
+    - {name: mobile, type: phone, in_list: true}
+    - {name: email, type: email}
+    - {name: customer, type: link, to: Customer, read_only: true, description: "Who visits are billed to: made from the patient when first billed"}
+    - {name: status, type: select, options: [Active, Inactive], default: Active, in_list: true, in_filter: true}
+    - {name: allergies, type: text}
+  list: {columns: [patient_name, sex, mobile, status], sort: patient_name asc}
+
+- name: PractitionerSlot
+  label: Hours
+  kind: child
+  fields:
+    - {name: day, type: select, options: [Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday], required: true, in_list: true}
+    - {name: from_time, type: data, required: true, in_list: true, description: "HH:MM, the workspace's local time"}
+    - {name: to_time, type: data, required: true, in_list: true, description: "HH:MM"}
+
+- name: Practitioner
+  label: Practitioner
+  label_plural: Practitioners
+  kind: master
+  module: healthcare
+  title_field: practitioner_name
+  fields:
+    - {name: practitioner_name, type: data, required: true, in_list: true}
+    - {name: email, type: email, unique: true, description: "Their sign-in"}
+    - {name: department, type: data, in_list: true, in_filter: true}
+    - {name: consultation_item, type: link, to: Item, description: "The settings' when empty"}
+    - {name: consultation_fee, type: currency, required: true, in_list: true}
+    - {name: hours, type: table, of: PractitionerSlot, description: "When they see patients, each day"}
+    - {name: active, type: check, default: true, in_list: true, in_filter: true}
+  list: {columns: [practitioner_name, department, consultation_fee, active], sort: practitioner_name asc}
+
+- name: AppointmentType
+  label: Appointment Type
+  label_plural: Appointment Types
+  kind: master
+  module: healthcare
+  title_field: type_name
+  fields:
+    - {name: type_name, type: data, required: true, unique: true, in_list: true}
+    - {name: duration, type: int, required: true, default: 15, label: Minutes, in_list: true}
+    - {name: consent_form, type: link, to: ConsentForm, description: "A patient gives this consent before they are seen"}
+  list: {columns: [type_name, duration, consent_form], sort: type_name asc}
+
+- name: ConsentForm
+  label: Consent Form
+  label_plural: Consent Forms
+  kind: master
+  module: healthcare
+  title_field: form_name
+  description: What a patient agrees to. Changing its text makes a new version, which each patient consents to again.
+  fields:
+    - {name: form_name, type: data, required: true, unique: true, in_list: true}
+    - {name: revision, type: int, read_only: true, no_copy: true, in_list: true, label: Version}
+    - {name: text, type: markdown, required: true}
+  list: {columns: [form_name, revision], sort: form_name asc}
+
+- name: PatientConsent
+  label: Patient Consent
+  label_plural: Patient Consents
+  kind: master
+  module: healthcare
+  title_field: consent_form
+  description: A patient's consent to one version of a form, given and perhaps withdrawn.
+  fields:
+    - {name: patient, type: link, to: Patient, required: true, in_list: true, in_filter: true}
+    - {name: consent_form, type: link, to: ConsentForm, required: true, in_list: true, in_filter: true}
+    - {name: form_version, type: int, read_only: true, no_copy: true, in_list: true}
+    - {name: given_by, type: data, required: true, description: "The patient, or who consents for them"}
+    - {name: given_at, type: datetime, read_only: true, no_copy: true, in_list: true}
+    - {name: status, type: select, options: [Given, Withdrawn], default: Given, read_only: true, no_copy: true, in_list: true, in_filter: true}
+    - {name: withdrawn_at, type: datetime, read_only: true, no_copy: true}
+  actions:
+    - {name: withdraw, label: Withdraw It, permission: write, condition: "doc.status == 'Given'"}
+  list: {columns: [patient, consent_form, form_version, given_at, status], sort: given_at desc}
+
+- name: Appointment
+  label: Appointment
+  label_plural: Appointments
+  kind: master
+  module: healthcare
+  title_field: patient
+  description: A patient seen by a practitioner, within their hours and clashing with neither's other appointments.
+  fields:
+    - {name: patient, type: link, to: Patient, required: true, in_list: true, in_filter: true}
+    - {name: practitioner, type: link, to: Practitioner, required: true, in_list: true, in_filter: true}
+    - {name: appointment_type, type: link, to: AppointmentType, required: true, in_list: true}
+    - {name: date, type: date, required: true, in_list: true, in_filter: true}
+    - {name: time, type: data, required: true, in_list: true, description: "HH:MM, the workspace's local time"}
+    - {name: duration, type: int, label: Minutes, description: "The type's when empty"}
+    - {name: starts_min, type: int, read_only: true, label: Starts (minutes past midnight)}
+    - {name: ends_min, type: int, read_only: true, label: Ends (minutes past midnight)}
+    - {name: status, type: select, options: [Scheduled, Checked In, Completed, Cancelled, No Show], default: Scheduled, read_only: true, no_copy: true, in_list: true, in_filter: true}
+    - {name: covered_by, type: link, to: FeeValidity, read_only: true, no_copy: true, description: "The paid visit this follow-up comes under"}
+    - {name: sales_invoice, type: link, to: SalesInvoice, read_only: true, no_copy: true}
+    - {name: notes, type: text}
+  actions:
+    - {name: check_in, label: Check In, permission: write, condition: "doc.status == 'Scheduled'"}
+    - {name: complete, label: Complete the Visit, permission: write, condition: "doc.status == 'Checked In'"}
+    - {name: cancel_appointment, label: Cancel It, permission: write, condition: "doc.status == 'Scheduled'"}
+    - {name: no_show, label: Did Not Come, permission: write, condition: "doc.status == 'Scheduled'"}
+  numbering: {template: "APT-{YYYY}-{seq:5}"}
+  list: {columns: [number, date, time, patient, practitioner, status], sort: date desc}
+
+- name: FeeValidity
+  label: Fee Validity
+  label_plural: Fee Validities
+  kind: master
+  module: healthcare
+  title_field: patient
+  description: A billed visit's cover for follow-ups with the same practitioner.
+  fields:
+    - {name: patient, type: link, to: Patient, required: true, read_only: true, in_list: true, in_filter: true}
+    - {name: practitioner, type: link, to: Practitioner, required: true, read_only: true, in_list: true, in_filter: true}
+    - {name: valid_till, type: date, read_only: true, in_list: true}
+    - {name: visits_left, type: int, read_only: true, in_list: true}
+    - {name: sales_invoice, type: link, to: SalesInvoice, read_only: true}
+  list: {columns: [patient, practitioner, valid_till, visits_left], sort: valid_till desc}
