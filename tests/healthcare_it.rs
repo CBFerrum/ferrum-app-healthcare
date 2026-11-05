@@ -6,6 +6,7 @@
 //! practitioner, billing it through ERP to a customer made from the patient, and covering the
 //! follow-ups within the settings' days; and who may do what.
 
+use ferrum_kernel::privacy::Person;
 use ferrum_kernel::secret::SecretKey;
 use ferrum_kernel::tenant::NewTenant;
 use ferrum_kernel::{Ctx, Db, DbConfig, Doc, Error, HookRegistry, Kernel, KernelSettings, ListQuery};
@@ -268,4 +269,21 @@ async fn scenario() {
     refused(t.k.insert(&mira_u, "Patient", obj(json!({"patient_name": "Walk-in"}))).await, "forbidden", "");
     refused(t.k.insert(&mira_u, "Appointment", book(ben, mira, general, "2026-11-16", "09:00")).await, "forbidden", "");
     refused(t.k.insert(&desk, "ConsentForm", obj(json!({"form_name": "Mine", "text": "x"}))).await, "forbidden", "");
+
+    // ───────────── a patient's request ─────────────
+    // Asha is found by her address and her number however written, her appointments through her;
+    // all of it is kept, as medical records, and the answer says why. The customer her bills went
+    // to is erased as any person's is, and the bills keep the name they carry.
+    let asha_asks = Person { email: "asha@home.test".into(), phone: Some("+91 9000000001".into()), name: None };
+    let asked = t.k.personal_data_of(&t.admin, &asha_asks).await.unwrap();
+    let records = asked["records"].as_array().unwrap();
+    let of = |entity: &str| records.iter().filter(|r| r["entity"] == json!(entity)).count();
+    assert_eq!(of("Patient"), 1, "{asked}");
+    assert!(of("Appointment") >= 2, "her appointments, through her: {asked}");
+    assert!(records.iter().filter(|r| r["entity"] != "Customer").all(|r| r["retained_because"].is_string()), "{asked}");
+    let erased = t.k.erase_personal_data_of(&t.admin, &asha_asks, "Request 7").await.unwrap();
+    let gone: Vec<&str> = erased["erased"].as_array().unwrap().iter().map(|r| r["entity"].as_str().unwrap()).collect();
+    assert_eq!(gone, ["Customer"], "{erased}");
+    assert_eq!(erased["retained"].as_array().unwrap().len(), records.len() - 1, "{erased}");
+    assert_eq!(t.get("Patient", asha).await["patient_name"], "Asha Rao", "kept as it was");
 }

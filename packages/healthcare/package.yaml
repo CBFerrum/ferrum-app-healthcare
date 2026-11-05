@@ -45,3 +45,9 @@ roles:
       - {entity: PatientConsent, read: true}
       - {entity: Practitioner, read: true}
       - {entity: AppointmentType, read: true}
+
+personal_data:
+  - {entity: Patient, match: email, phone: mobile, name: patient_name, retain: "Medical records, kept as long as health law requires"}
+  - {entity: Appointment, match: patient, retain: "Medical records, kept as long as health law requires"}
+  - {entity: PatientConsent, match: patient, retain: "Evidence of the consent given or withdrawn"}
+  - {entity: FeeValidity, match: patient, retain: "Billing records"}
