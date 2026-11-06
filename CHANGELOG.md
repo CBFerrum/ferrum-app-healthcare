@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.11
+
+Rebuilt with Ferrum-Frontend 63280d3: right to left, its pages mirror as they read (icons that point along the line, margins and alignment by the line's start and end, arrow keys along it), and the records pages' words are in Arabic and Hindi.
+
 ## 0.1.10
 
 Found walking it in a browser on 7 November: Did Not Come was taken at 03:35 for an 11:00 visit.
