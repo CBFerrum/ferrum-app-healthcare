@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.7
+
+What walking a clinic's day through the pages found:
+- The day is the workspace's, not UTC's, so an evening reception west of Greenwich, or an early one east of it, sees its own day.
+- Patients are named by each appointment's own link title. The page fetched at most 500 patients, so a larger clinic saw blank names.
+- An empty clinic says what to set up first, and a practitioner with nothing booked says so.
+- A visit checked in, completed, cancelled or missed shows its patient, practitioner, type, date and time as read-only, as the server already holds them. The minutes past midnight it is checked by are no longer shown.
+- A new appointment is for today unless another day is chosen.
+- Rebuilt with Ferrum-Frontend a76295e: times on a person's own clock when they chose one on their Account page.
+
 ## 0.1.6
 
 Rebuilt with Ferrum-Frontend 24c3951: its pages show times on the workspace's clock, naming the zone when it is not the browser's, a draft numbered on submit is headed as a draft, and a record of an app that is not installed says so.

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { byPractitioner } from "./Home";
+import { byPractitioner, patientOf } from "./Home";
 
 describe("the day", () => {
   it("groups appointments by practitioner, in time order", () => {
@@ -10,5 +10,10 @@ describe("the day", () => {
     ]);
     expect(m.get("p1")?.map((x) => x.id)).toEqual(["a", "b"]);
     expect(m.get("p2")?.length).toBe(1);
+  });
+
+  it("names the patient by the link's title, not by id", () => {
+    expect(patientOf({ id: "a", patient: "0190-uuid", _titles: { patient: "Sofia Lind" } })).toBe("Sofia Lind");
+    expect(patientOf({ id: "b", patient: "0190-uuid" })).toBe("");
   });
 });
