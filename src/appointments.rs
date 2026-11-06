@@ -9,7 +9,7 @@
 use crate::consent::consented;
 use crate::{minutes, obj};
 use async_trait::async_trait;
-use chrono::{Datelike, Duration, NaiveDate};
+use chrono::{Datelike, Duration, NaiveDate, Timelike};
 use ferrum_domain::flow::created;
 use ferrum_domain::util::{d, elevated, id, money, rows, s, sys};
 use ferrum_kernel::{Ctx, Doc, DocHook, Error, HookCtx, Kernel, Result, Tx};
@@ -188,7 +188,15 @@ impl DocHook for AppointmentHook {
                 return Ok(Some(out));
             }
             "cancel_appointment" => "Cancelled",
-            "no_show" => "No Show",
+            "no_show" => {
+                // Missed only once it was due: not before it begins, on the workspace's clock.
+                let (day, start, _) = when(doc)?;
+                let now = hc.ctx.now_local();
+                if (day, start) > (now.date_naive(), i64::from(now.hour() * 60 + now.minute())) {
+                    return Err(Error::invalid(format!("the visit has not begun yet: it is at {} on {day}", hhmm(start))));
+                }
+                "No Show"
+            }
             _ => return Ok(None),
         };
         hc.kernel.set_values_tx(&system, hc.tx, "Appointment", appointment, obj(json!({"status": to}))).await?;

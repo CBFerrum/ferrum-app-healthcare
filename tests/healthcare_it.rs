@@ -260,9 +260,14 @@ async fn scenario() {
     t.act(&desk, "Appointment", next_month, "check_in").await.unwrap();
     assert!(t.act(&omar_u, "Appointment", next_month, "complete").await.unwrap()["sales_invoice"].is_object());
     assert_eq!(t.get("Patient", ben).await["customer"], ben_customer, "one customer a patient, however often billed");
-    t.act(&desk, "Appointment", ben_visit, "no_show").await.unwrap();
-    assert_eq!(t.get("Appointment", ben_visit).await["status"], "No Show");
-    refused(t.act(&desk, "Appointment", ben_visit, "check_in").await, "invalid", "not available");
+    // Missed only once it was due: a visit still to come is refused, one gone by is marked.
+    let ahead = uid(&t.k.insert(&desk, "Appointment", book(ben, mira, general, "2030-11-04", "09:20")).await.unwrap()["id"]);
+    refused(t.act(&desk, "Appointment", ahead, "no_show").await, "invalid", "has not begun yet: it is at 09:20 on 2030-11-04");
+    let missed = uid(&t.k.insert(&desk, "Appointment", book(ben, mira, general, "2026-11-02", "09:20")).await.unwrap()["id"]);
+    t.act(&desk, "Appointment", missed, "no_show").await.unwrap();
+    assert_eq!(t.get("Appointment", missed).await["status"], "No Show");
+    refused(t.act(&desk, "Appointment", missed, "check_in").await, "invalid", "not available");
+    assert_eq!(t.get("Appointment", ben_visit).await["status"], "Scheduled");
 
     // ───────────── who may do what ─────────────
     refused(t.k.insert(&desk, "Practitioner", obj(json!({"practitioner_name": "Self-made", "consultation_fee": "1"}))).await, "forbidden", "");
