@@ -105,14 +105,14 @@
   title_field: patient
   description: A patient seen by a practitioner, within their hours and clashing with neither's other appointments.
   fields:
-    - {name: patient, type: link, to: Patient, required: true, in_list: true, in_filter: true}
-    - {name: practitioner, type: link, to: Practitioner, required: true, in_list: true, in_filter: true}
-    - {name: appointment_type, type: link, to: AppointmentType, required: true, in_list: true}
-    - {name: date, type: date, required: true, in_list: true, in_filter: true}
-    - {name: time, type: data, required: true, in_list: true, description: "HH:MM, the workspace's local time"}
+    - {name: patient, type: link, to: Patient, required: true, in_list: true, in_filter: true, read_only_if: "doc.status in ['Checked In', 'Completed', 'Cancelled', 'No Show']"}
+    - {name: practitioner, type: link, to: Practitioner, required: true, in_list: true, in_filter: true, read_only_if: "doc.status in ['Checked In', 'Completed', 'Cancelled', 'No Show']"}
+    - {name: appointment_type, type: link, to: AppointmentType, required: true, in_list: true, read_only_if: "doc.status in ['Checked In', 'Completed', 'Cancelled', 'No Show']"}
+    - {name: date, type: date, required: true, default_expr: today, in_list: true, in_filter: true, read_only_if: "doc.status in ['Checked In', 'Completed', 'Cancelled', 'No Show']"}
+    - {name: time, type: data, required: true, in_list: true, description: "HH:MM, the workspace's local time", read_only_if: "doc.status in ['Checked In', 'Completed', 'Cancelled', 'No Show']"}
     - {name: duration, type: int, label: Minutes, description: "The type's when empty"}
-    - {name: starts_min, type: int, read_only: true, label: Starts (minutes past midnight)}
-    - {name: ends_min, type: int, read_only: true, label: Ends (minutes past midnight)}
+    - {name: starts_min, type: int, read_only: true, hidden: true, label: Starts (minutes past midnight)}
+    - {name: ends_min, type: int, read_only: true, hidden: true, label: Ends (minutes past midnight)}
     - {name: status, type: select, options: [Scheduled, Checked In, Completed, Cancelled, No Show], default: Scheduled, read_only: true, no_copy: true, in_list: true, in_filter: true}
     - {name: covered_by, type: link, to: FeeValidity, read_only: true, no_copy: true, description: "The paid visit this follow-up comes under"}
     - {name: sales_invoice, type: link, to: SalesInvoice, read_only: true, no_copy: true}
