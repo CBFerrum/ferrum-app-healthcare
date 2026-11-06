@@ -1,6 +1,6 @@
 id: healthcare
 name: Healthcare
-version: 0.1.8
+version: 0.1.9
 publisher: cbferrum
 summary: "Patients, practitioners' hours, appointments without clashes, consent by form version, and visits billed through ERP with follow-ups"
 description: README.md
