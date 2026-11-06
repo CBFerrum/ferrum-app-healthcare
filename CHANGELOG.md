@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.10
+
+Found walking it in a browser on 7 November: Did Not Come was taken at 03:35 for an 11:00 visit.
+A visit is marked missed only once it has begun, on the workspace's clock; before, it is refused
+and says when the visit is.
+
 ## 0.1.9
 
 Rebuilt with Ferrum-Frontend a64416a: a new record's box whose default is 1 shows ticked, as it is saved.
