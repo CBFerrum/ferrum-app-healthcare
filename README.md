@@ -33,7 +33,7 @@ legal review says so.
   settings' days, as many as the settings say. A covered visit is not billed (ERPNext's fee
   validity).
 - **Under way or over.** A visit checked in, completed, cancelled or missed keeps its patient,
-  practitioner and time.
+  practitioner and time. It is marked missed only once it has begun, on the workspace's clock.
 
 ## Develop
 
@@ -60,6 +60,7 @@ cd ui && npm run build && npm run check
 
 | Version | Highlights |
 |---|---|
+| **0.1.10** | A visit is marked missed only once it has begun. |
 | **0.1.9** | Rebuilt with Ferrum-Frontend a64416a: a box whose default is 1 shows ticked. |
 | **0.1.8** | Rebuilt with Ferrum-Frontend 922fcfb: action dialogs say every refusal and ask once. |
 | **0.1.7** | The workspace's day on the home page, patients named by link title (no 500-patient limit), empty states, a visit under way read-only on its page, new appointments for today. |
