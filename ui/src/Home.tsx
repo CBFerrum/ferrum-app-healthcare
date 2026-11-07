@@ -5,7 +5,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link } from "react-router";
-import { api, docPath, todayIso } from "@ferrum/client";
+import { api, docPath, todayIso, t } from "@ferrum/client";
 import { Badge, EmptyState, ErrorState, PageLoading, statusTone, useShellTitle } from "@ferrum/kit";
 
 export interface Row {
@@ -49,16 +49,16 @@ export function Home() {
   return (
     <div className="np-page">
       <header className="row" style={{ justifyContent: "space-between" }}>
-        <h2>The day</h2>
+        <h2>{t("The day")}</h2>
         <span className="row">
-          <input className="input" type="date" value={day} onChange={(e) => setDay(e.target.value)} aria-label="Day" />
-          <Link to="/e/Appointment/new">New appointment</Link>
+          <input className="input" type="date" value={day} onChange={(e) => setDay(e.target.value)} aria-label={t("Day")} />
+          <Link to="/e/Appointment/new">{t("New appointment")}</Link>
         </span>
       </header>
       {q.data.practitioners.length === 0 ? (
-        <EmptyState title="No practitioners yet" icon="calendar">
+        <EmptyState title={t("No practitioners yet")} icon="calendar">
           <p className="muted">
-            Add a practitioner with their fee and weekly hours, and an appointment type, and the day's appointments show here. <Link to="/e/Practitioner/new">Add a practitioner</Link>
+            {t("Add a practitioner with their fee and weekly hours, and an appointment type, and the day's appointments show here.")} <Link to="/e/Practitioner/new">{t("Add a practitioner")}</Link>
           </p>
         </EmptyState>
       ) : (
@@ -78,7 +78,7 @@ export function Home() {
                   ))}
                 </ul>
               ) : (
-                <p className="muted">Nothing booked.</p>
+                <p className="muted">{t("Nothing booked.")}</p>
               )}
             </section>
           ))}
