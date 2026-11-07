@@ -1,6 +1,6 @@
 id: healthcare
 name: Healthcare
-version: 0.1.14
+version: 0.1.15
 publisher: cbferrum
 summary: "Patients, practitioners' hours, appointments without clashes, consent by form version, and visits billed through ERP with follow-ups"
 description: README.md
@@ -31,3 +31,17 @@ contributes:
   shell.create:
     - {id: appointment, label: Appointment, path: healthcare/e/Appointment/new, entity: Appointment}
     - {id: patient, label: Patient, path: healthcare/e/Patient/new, entity: Patient}
+  # What the assistant should know in Healthcare's pages, and what it suggests asking there.
+  shell.assistant:
+    - id: healthcare
+      title: "Healthcare"
+      instructions: >-
+        An Appointment is Scheduled, Checked In, Completed, Cancelled or No Show, at the workspace's local time. A
+        completed visit is billed through ERP, and a follow-up within a paid visit's validity (FeeValidity) is not
+        billed again. A PatientConsent is Given or Withdrawn for one version of a ConsentForm. Health details are
+        personal data of a special kind: some fields are held back from you unless the workspace allows them, and what
+        you are given is to be used only as far as the question needs.
+      suggestions:
+        - "Which appointments are booked for tomorrow?"
+        - "Who did not come this week?"
+        - "Which patients withdrew a consent?"

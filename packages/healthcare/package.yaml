@@ -19,9 +19,9 @@ roles:
       - {entity: Practitioner, read: true, write: true, create: true}
       - {entity: AppointmentType, read: true, write: true, create: true}
       - {entity: ConsentForm, read: true, write: true, create: true}
-      - {entity: Patient, read: true, write: true, create: true, export: true}
+      - {entity: Patient, read: true, write: true, create: true, export: true, read_groups: [personal, clinical], write_groups: [personal, clinical]}
       - {entity: PatientConsent, read: true, write: true, create: true}
-      - {entity: Appointment, read: true, write: true, create: true, export: true}
+      - {entity: Appointment, read: true, write: true, create: true, export: true, read_groups: [clinical], write_groups: [clinical]}
       - {entity: FeeValidity, read: true}
       - {entity: Item, read: true}
       - {entity: Company, read: true}
@@ -30,9 +30,9 @@ roles:
   - name: Clinic Reception
     description: Registers patients, books and checks them in, and takes their consent.
     permissions:
-      - {entity: Patient, read: true, write: true, create: true}
+      - {entity: Patient, read: true, write: true, create: true, read_groups: [personal, clinical], write_groups: [personal, clinical]}
       - {entity: PatientConsent, read: true, write: true, create: true}
-      - {entity: Appointment, read: true, write: true, create: true}
+      - {entity: Appointment, read: true, write: true, create: true, read_groups: [clinical], write_groups: [clinical]}
       - {entity: Practitioner, read: true}
       - {entity: AppointmentType, read: true}
       - {entity: ConsentForm, read: true}
@@ -40,8 +40,8 @@ roles:
   - name: Practitioner
     description: Sees their patients and completes their visits.
     permissions:
-      - {entity: Patient, read: true}
-      - {entity: Appointment, read: true, write: true}
+      - {entity: Patient, read: true, read_groups: [personal, clinical]}
+      - {entity: Appointment, read: true, write: true, read_groups: [clinical], write_groups: [clinical]}
       - {entity: PatientConsent, read: true}
       - {entity: Practitioner, read: true}
       - {entity: AppointmentType, read: true}

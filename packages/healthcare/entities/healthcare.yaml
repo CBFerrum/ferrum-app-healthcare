@@ -21,12 +21,12 @@
   fields:
     - {name: patient_name, type: data, required: true, in_list: true}
     - {name: sex, type: select, options: [Female, Male, Other, Not Stated], default: Not Stated, in_list: true}
-    - {name: date_of_birth, type: date}
+    - {name: date_of_birth, type: date, perm_group: personal}
     - {name: mobile, type: phone, in_list: true}
     - {name: email, type: email}
     - {name: customer, type: link, to: Customer, read_only: true, description: "Who visits are billed to: made from the patient when first billed"}
     - {name: status, type: select, options: [Active, Inactive], default: Active, in_list: true, in_filter: true}
-    - {name: allergies, type: text}
+    - {name: allergies, type: text, perm_group: clinical}
   list: {columns: [patient_name, sex, mobile, status], sort: patient_name asc}
 
 - name: PractitionerSlot
@@ -116,7 +116,7 @@
     - {name: status, type: select, options: [Scheduled, Checked In, Completed, Cancelled, No Show], default: Scheduled, read_only: true, no_copy: true, in_list: true, in_filter: true}
     - {name: covered_by, type: link, to: FeeValidity, read_only: true, no_copy: true, description: "The paid visit this follow-up comes under"}
     - {name: sales_invoice, type: link, to: SalesInvoice, read_only: true, no_copy: true}
-    - {name: notes, type: text}
+    - {name: notes, type: text, perm_group: clinical}
   actions:
     - {name: check_in, label: Check In, permission: write, condition: "doc.status == 'Scheduled'"}
     - {name: complete, label: Complete the Visit, permission: write, condition: "doc.status == 'Checked In'"}
