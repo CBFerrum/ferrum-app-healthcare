@@ -5,7 +5,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link } from "react-router";
-import { api, docPath, todayIso, t } from "@ferrum/client";
+import { api, docPath, todayIso, t, isolate } from "@ferrum/client";
 import { Badge, EmptyState, ErrorState, PageLoading, statusTone, useShellTitle } from "@ferrum/kit";
 
 export interface Row {
@@ -30,7 +30,7 @@ export function byPractitioner(list: Row[]): Map<string, Row[]> {
 }
 
 export function Home() {
-  useShellTitle("Healthcare");
+  useShellTitle(t("Healthcare"));
   const [day, setDay] = useState(todayIso);
   const q = useQuery({
     queryKey: ["healthcare", "day", day],
@@ -65,15 +65,15 @@ export function Home() {
         <div className="np-columns">
           {q.data.practitioners.map((p) => (
             <section key={p.id} className="card card-pad stack" aria-label={String(p.practitioner_name)}>
-              <h3>{String(p.practitioner_name)}</h3>
+              <h3>{isolate(String(p.practitioner_name))}</h3>
               {grouped.get(p.id)?.length ? (
                 <ul className="stack">
                   {(grouped.get(p.id) ?? []).map((a) => (
                     <li key={a.id}>
                       <Link to={`/e/Appointment/${a.id}`}>
-                        {String(a.time)} · {patientOf(a)}
-                      </Link>{" "}
-                      <Badge tone={statusTone(String(a.status))}>{String(a.status)}</Badge>
+                        {isolate(String(a.time))} · {isolate(patientOf(a))}
+                      </Link>{isolate(" ")}
+                      <Badge tone={statusTone(String(a.status))}>{isolate(String(a.status))}</Badge>
                     </li>
                   ))}
                 </ul>
