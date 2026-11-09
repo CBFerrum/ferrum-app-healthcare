@@ -11,7 +11,7 @@ use crate::{minutes, obj};
 use async_trait::async_trait;
 use chrono::{Datelike, Duration, NaiveDate, Timelike};
 use ferrum_domain::flow::created;
-use ferrum_domain::util::{d, elevated, id, money, rows, s, sys};
+use ferrum_domain::util::{d, elevated, id, money, round, rows, s, sys};
 use ferrum_kernel::{Ctx, Doc, DocHook, Error, HookCtx, Kernel, Result, Tx};
 use rust_decimal::Decimal;
 use serde_json::{Value, json};
@@ -42,7 +42,7 @@ impl DocHook for PractitionerHook {
 
 pub struct AppointmentHook;
 
-const WEEKDAYS: [&str; 7] = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+pub(crate) const WEEKDAYS: [&str; 7] = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
 /// The visit's day, and its start and end in minutes past midnight.
 fn when(doc: &Doc) -> Result<(NaiveDate, i64, i64)> {
@@ -54,7 +54,7 @@ fn when(doc: &Doc) -> Result<(NaiveDate, i64, i64)> {
 }
 
 /// HH:MM of minutes past midnight.
-fn hhmm(m: i64) -> String {
+pub(crate) fn hhmm(m: i64) -> String {
     format!("{:02}:{:02}", m / 60, m % 60)
 }
 
@@ -263,30 +263,71 @@ async fn bill(k: &Kernel, ctx: &Ctx, tx: &mut Tx, doc: &Doc) -> Result<Value> {
         .await?
         .flatten();
     let what = format!("Consultation with {}, {day}", s(&doctor, "practitioner_name").unwrap_or_default());
-    let inv = k
-        .insert_tx(
-            ctx,
-            tx,
-            "SalesInvoice",
-            obj(json!({"company": company.to_string(), "customer": customer.to_string(), "currency": currency.map(|c| c.to_string()), "remarks": what,
-                       "items": [{"item": item.to_string(), "qty": "1", "price_list_rate": money(fee), "discount_percent": "0", "description": what}]})),
-        )
-        .await?;
+    // An insured patient's insurer pays its share of the fee, claimed from it; the patient the rest.
+    let insured = k.get_tx(ctx, tx, "Patient", patient, false).await?;
+    let (insurer, cover) = (id(&insured, "insurer"), d(&insured, "coverage_percent").min(Decimal::ONE_HUNDRED));
+    let theirs = match insurer {
+        Some(_) if cover > Decimal::ZERO => round(fee * cover / Decimal::ONE_HUNDRED, 2),
+        _ => Decimal::ZERO,
+    };
+    let line = |amount: Decimal, words: &str| json!({"item": item.to_string(), "qty": "1", "price_list_rate": money(amount), "discount_percent": "0", "description": words});
+    let mut out = json!({"status": "Completed"});
+    let mut billed = Value::Null;
+    if fee - theirs > Decimal::ZERO || theirs.is_zero() {
+        let inv = k
+            .insert_tx(
+                ctx,
+                tx,
+                "SalesInvoice",
+                obj(json!({"company": company.to_string(), "customer": customer.to_string(), "currency": currency.map(|c| c.to_string()), "remarks": what,
+                           "items": [line(fee - theirs, &what)]})),
+            )
+            .await?;
+        billed = inv.get("id").cloned().unwrap_or(Value::Null);
+        out["sales_invoice"] = created("SalesInvoice", &inv);
+    }
+    let mut values = obj(json!({"sales_invoice": billed}));
+    if let (Some(insurer), true) = (insurer, theirs > Decimal::ZERO) {
+        let words = format!("{what}: the insurer's {}% share, policy {}", cover.normalize(), s(&insured, "policy_number").unwrap_or("-"));
+        let theirs_inv = k
+            .insert_tx(
+                ctx,
+                tx,
+                "SalesInvoice",
+                obj(json!({"company": company.to_string(), "customer": insurer.to_string(), "currency": currency.map(|c| c.to_string()), "remarks": words,
+                           "items": [line(theirs, &words)]})),
+            )
+            .await?;
+        let claim = k
+            .insert_tx(
+                ctx,
+                tx,
+                "InsuranceClaim",
+                obj(json!({"appointment": appointment.to_string(), "patient": patient.to_string(), "insurer": insurer.to_string(),
+                           "policy_number": s(&insured, "policy_number"), "amount": money(theirs), "sales_invoice": theirs_inv.get("id"), "status": "Submitted"})),
+            )
+            .await?;
+        values.insert("claim".into(), claim.get("id").cloned().unwrap_or(Value::Null));
+        if billed.is_null() {
+            billed = theirs_inv.get("id").cloned().unwrap_or(Value::Null);
+        }
+        out["claim"] = created("InsuranceClaim", &claim);
+    }
     let till = day + Duration::days(days.unwrap_or(7).max(0));
     k.insert_tx(
         ctx,
         tx,
         "FeeValidity",
         obj(json!({"patient": patient.to_string(), "practitioner": practitioner.to_string(), "valid_till": till.to_string(), "visits_left": visits.unwrap_or(1).max(0),
-                   "sales_invoice": inv.get("id")})),
+                   "sales_invoice": billed})),
     )
     .await?;
-    k.set_values_tx(ctx, tx, "Appointment", appointment, obj(json!({"sales_invoice": inv.get("id")}))).await?;
-    Ok(json!({"status": "Completed", "sales_invoice": created("SalesInvoice", &inv)}))
+    k.set_values_tx(ctx, tx, "Appointment", appointment, values).await?;
+    Ok(out)
 }
 
 /// The customer a patient is billed to: theirs, or one made from them now.
-async fn customer_of(k: &Kernel, ctx: &Ctx, tx: &mut Tx, patient: Uuid) -> Result<Uuid> {
+pub(crate) async fn customer_of(k: &Kernel, ctx: &Ctx, tx: &mut Tx, patient: Uuid) -> Result<Uuid> {
     let p = k.get_tx(ctx, tx, "Patient", patient, true).await?;
     if let Some(c) = id(&p, "customer") {
         return Ok(c);
