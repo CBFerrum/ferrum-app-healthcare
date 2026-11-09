@@ -1,8 +1,8 @@
 id: healthcare
 name: Healthcare
-version: 0.1.16
+version: 0.2.0
 publisher: cbferrum
-summary: "Patients, practitioners' hours, appointments without clashes, consent by form version, and visits billed through ERP with follow-ups"
+summary: "Patients, practitioners' hours, appointments booked online and at the desk, reminders, consent by form version, visits billed through ERP with insurers' claims, and a patient portal"
 description: README.md
 categories: [industry, finance]
 license: AGPL-3.0-only
@@ -32,6 +32,12 @@ contributes:
     - {id: appointment, label: Appointment, path: healthcare/e/Appointment/new, entity: Appointment}
     - {id: patient, label: Patient, path: healthcare/e/Patient/new, entity: Patient}
   # What the assistant should know in Healthcare's pages, and what it suggests asking there.
+  # What patients open without signing in: /healthcare/book/{workspace}, and a visit's own page below it.
+  shell.public:
+    - {id: book, path: healthcare/book, title: Book a visit}
+  # The workspace's portal (the healthcare package's endpoints): a patient's visits at /portal/visits/.
+  shell.portal:
+    - {id: visits, title: Your visits, description: "Your visits, the consents they need, and your invoices"}
   shell.assistant:
     - id: healthcare
       title: "Healthcare"

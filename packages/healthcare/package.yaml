@@ -9,7 +9,7 @@ modules:
     label: Healthcare
     icon: stethoscope
     order: 54
-    items: [Appointment, Patient, PatientConsent, Practitioner, AppointmentType, ConsentForm, FeeValidity, HealthcareSettings]
+    items: [Appointment, Patient, PatientConsent, InsuranceClaim, Practitioner, AppointmentType, ConsentForm, FeeValidity, HealthcareSettings]
 
 roles:
   - name: Healthcare Manager
@@ -23,6 +23,7 @@ roles:
       - {entity: PatientConsent, read: true, write: true, create: true}
       - {entity: Appointment, read: true, write: true, create: true, export: true, read_groups: [clinical], write_groups: [clinical]}
       - {entity: FeeValidity, read: true}
+      - {entity: InsuranceClaim, read: true, write: true, export: true, read_groups: [personal]}
       - {entity: Item, read: true}
       - {entity: Company, read: true}
       - {entity: Customer, read: true}
@@ -37,6 +38,8 @@ roles:
       - {entity: AppointmentType, read: true}
       - {entity: ConsentForm, read: true}
       - {entity: FeeValidity, read: true}
+      - {entity: InsuranceClaim, read: true, write: true, read_groups: [personal]}
+      - {entity: Customer, read: true}
   - name: Practitioner
     description: Sees their patients and completes their visits.
     permissions:
@@ -51,3 +54,4 @@ personal_data:
   - {entity: Appointment, match: patient, retain: "Medical records, kept as long as health law requires"}
   - {entity: PatientConsent, match: patient, retain: "Evidence of the consent given or withdrawn"}
   - {entity: FeeValidity, match: patient, retain: "Billing records"}
+  - {entity: InsuranceClaim, match: patient, retain: "Billing records"}

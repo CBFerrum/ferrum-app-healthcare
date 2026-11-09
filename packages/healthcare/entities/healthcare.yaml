@@ -8,9 +8,13 @@
     - {name: consultation_item, type: link, to: Item, required: true, description: "What a visit is billed as, unless its practitioner says otherwise"}
     - {name: follow_up_days, type: int, default: 7, description: "Days after a billed visit in which follow-ups with the same practitioner are covered"}
     - {name: follow_up_visits, type: int, default: 1, description: "How many follow-ups a billed visit covers"}
+    - {name: book_online, type: check, label: Booked Online, description: "Patients book visits themselves on the clinic's booking page"}
+    - {name: cancel_hours, type: int, default: 2, min: 0, label: Cancel Online Until (Hours), description: "Hours before a visit its patient may still cancel it online"}
+    - {name: reminder_hours, type: int, default: 24, min: 0, label: Remind (Hours Before), description: "Hours before a visit its patient is reminded by email; none when 0"}
   form:
     - {label: Billing, fields: [company, consultation_item]}
     - {label: Follow-ups, fields: [follow_up_days, follow_up_visits]}
+    - {label: Patients, fields: [book_online, cancel_hours, reminder_hours]}
 
 - name: Patient
   label: Patient
@@ -26,6 +30,10 @@
     - {name: email, type: email}
     - {name: customer, type: link, to: Customer, read_only: true, description: "Who visits are billed to: made from the patient when first billed"}
     - {name: status, type: select, options: [Active, Inactive], default: Active, in_list: true, in_filter: true}
+    - {name: source, type: select, options: [Clinic, Online], default: Clinic, read_only: true, in_filter: true}
+    - {name: insurer, type: link, to: Customer, description: "The insurer that pays its share of the patient's visits"}
+    - {name: policy_number, type: data, perm_group: personal}
+    - {name: coverage_percent, type: percent, min: "0", max: "100", label: Coverage %, description: "The insurer's share of a visit's fee"}
     - {name: allergies, type: text, perm_group: clinical}
   list: {columns: [patient_name, sex, mobile, status], sort: patient_name asc}
 
@@ -49,6 +57,7 @@
     - {name: department, type: data, in_list: true, in_filter: true}
     - {name: consultation_item, type: link, to: Item, description: "The settings' when empty"}
     - {name: consultation_fee, type: currency, required: true, in_list: true}
+    - {name: book_online, type: check, label: Booked Online, in_list: true, description: "Patients book them on the clinic's booking page"}
     - {name: hours, type: table, of: PractitionerSlot, description: "When they see patients, each day"}
     - {name: active, type: check, default: true, in_list: true, in_filter: true}
   list: {columns: [practitioner_name, department, consultation_fee, active], sort: practitioner_name asc}
@@ -62,6 +71,7 @@
   fields:
     - {name: type_name, type: data, required: true, unique: true, in_list: true}
     - {name: duration, type: int, required: true, default: 15, label: Minutes, in_list: true}
+    - {name: book_online, type: check, label: Booked Online, in_list: true, description: "Patients book it on the clinic's booking page"}
     - {name: consent_form, type: link, to: ConsentForm, description: "A patient gives this consent before they are seen"}
   list: {columns: [type_name, duration, consent_form], sort: type_name asc}
 
@@ -116,6 +126,10 @@
     - {name: status, type: select, options: [Scheduled, Checked In, Completed, Cancelled, No Show], default: Scheduled, read_only: true, no_copy: true, in_list: true, in_filter: true}
     - {name: covered_by, type: link, to: FeeValidity, read_only: true, no_copy: true, description: "The paid visit this follow-up comes under"}
     - {name: sales_invoice, type: link, to: SalesInvoice, read_only: true, no_copy: true}
+    - {name: claim, type: link, to: InsuranceClaim, read_only: true, no_copy: true, description: "The insurer's share, claimed"}
+    - {name: source, type: select, options: [Clinic, Online], default: Clinic, read_only: true, in_list: true, in_filter: true}
+    - {name: reminded_at, type: datetime, read_only: true, no_copy: true}
+    - {name: token_hash, type: data, read_only: true, hidden: true, no_copy: true, no_export: true}
     - {name: notes, type: text, perm_group: clinical}
   actions:
     - {name: check_in, label: Check In, permission: write, condition: "doc.status == 'Scheduled'"}
@@ -139,3 +153,31 @@
     - {name: visits_left, type: int, read_only: true, in_list: true}
     - {name: sales_invoice, type: link, to: SalesInvoice, read_only: true}
   list: {columns: [patient, practitioner, valid_till, visits_left], sort: valid_till desc}
+
+- name: InsuranceClaim
+  label: Insurance Claim
+  label_plural: Insurance Claims
+  kind: master
+  module: healthcare
+  title_field: insurer
+  description: "An insurer's share of a visit, billed to them through ERP when the visit is completed. Paid once its invoice is settled; rejected, the patient is billed the share instead and the insurer credited."
+  fields:
+    - {name: appointment, type: link, to: Appointment, read_only: true, in_list: true}
+    - {name: patient, type: link, to: Patient, read_only: true, in_list: true, in_filter: true}
+    - {name: insurer, type: link, to: Customer, read_only: true, in_list: true, in_filter: true}
+    - {name: policy_number, type: data, read_only: true, perm_group: personal}
+    - {name: amount, type: currency, read_only: true, in_list: true}
+    - {name: sales_invoice, type: link, to: SalesInvoice, read_only: true, label: Insurer's Invoice}
+    - {name: status, type: select, options: [Submitted, Paid, Rejected], default: Submitted, read_only: true, no_copy: true, in_list: true, in_filter: true}
+    - {name: rejected_reason, type: text, read_only: true, no_copy: true}
+    - {name: credit_note, type: link, to: SalesInvoice, read_only: true, no_copy: true, description: "The insurer's invoice credited, when it was rejected"}
+    - {name: patient_invoice, type: link, to: SalesInvoice, read_only: true, no_copy: true, description: "What the patient was billed instead"}
+  actions:
+    - name: reject
+      label: Rejected by the Insurer
+      permission: write
+      condition: "doc.status == 'Submitted'"
+      params:
+        - {name: reason, type: text, label: Reason, required: true}
+  numbering: {template: "CLM-{YYYY}-{seq:5}"}
+  list: {columns: [number, patient, insurer, amount, status], sort: created_at desc}
