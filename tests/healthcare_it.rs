@@ -291,4 +291,212 @@ async fn scenario() {
     assert_eq!(gone, ["Customer"], "{erased}");
     assert_eq!(erased["retained"].as_array().unwrap().len(), records.len() - 1, "{erased}");
     assert_eq!(t.get("Patient", asha).await["patient_name"], "Asha Rao", "kept as it was");
+
+    // ───────────── booking online, reminders, the patients' portal ─────────────
+    let tenant_id = t.tenant;
+    let call = |who: Option<Ctx>, method: &'static str, path: String, body: Value| {
+        let k = k.clone();
+        async move {
+            let site = k.hooks.site("healthcare").expect("healthcare's endpoints").clone();
+            let (path, query) = path.split_once('?').map(|(p, q)| (p.to_string(), q.to_string())).unwrap_or((path, String::new()));
+            let query: serde_json::Map<String, Value> = query.split('&').filter_map(|p| p.split_once('=')).map(|(k, v)| (k.to_string(), json!(v))).collect();
+            let req = ferrum_kernel::SiteRequest {
+                tenant: tenant_id,
+                user: who,
+                method: method.into(),
+                path: format!("/{path}"),
+                query,
+                headers: Default::default(),
+                body: if body.is_null() { vec![] } else { body.to_string().into_bytes() },
+                client_ip: "198.51.100.4".into(),
+            };
+            let r = site.handle(&k, req).await?;
+            Ok::<_, Error>((r.status, serde_json::from_slice::<Value>(&r.body).unwrap()))
+        }
+    };
+    refused(call(None, "GET", "book/options".into(), Value::Null).await, "not found", "");
+    let settings = uid(&t.find_one("HealthcareSettings", json!({})).await["id"]);
+    t.k.update(&manager, "HealthcareSettings", settings, obj(json!({"book_online": true, "cancel_hours": 2, "reminder_hours": 24})), None).await.unwrap();
+    t.k.update(&manager, "Practitioner", mira, obj(json!({"book_online": true})), None).await.unwrap();
+    t.k.update(&manager, "AppointmentType", general, obj(json!({"book_online": true})), None).await.unwrap();
+    let options = call(None, "GET", "book/options".into(), Value::Null).await.unwrap().1;
+    assert_eq!(
+        (options["practitioners"].as_array().unwrap().iter().map(|p| p["name"].as_str().unwrap()).collect::<Vec<_>>(), options["types"][0]["name"].as_str()),
+        (vec!["Dr Mira Shah"], Some("General")),
+        "only who and what the clinic books online"
+    );
+    // The next Monday at least two days ahead, on the workspace's clock.
+    use chrono::Datelike;
+    let today = t.admin.now_local().date_naive();
+    let mut monday = today + chrono::Duration::days(2);
+    while monday.weekday() != chrono::Weekday::Mon {
+        monday += chrono::Duration::days(1);
+    }
+    let day = monday.to_string();
+    let slots = |practitioner: Uuid, kind: Uuid, on: &str| format!("book/slots?practitioner={practitioner}&type={kind}&date={on}");
+    let free = call(None, "GET", slots(mira, general, &day), Value::Null).await.unwrap().1;
+    let times: Vec<String> = free["times"].as_array().unwrap().iter().map(|v| v.as_str().unwrap().to_string()).collect();
+    assert!(times.contains(&"09:00".to_string()) && times.contains(&"12:40".to_string()) && !times.contains(&"12:50".to_string()), "{times:?}");
+    t.k.insert(&desk, "Appointment", book(ben, mira, general, &day, "09:20")).await.expect("Ben at the desk");
+    let free = call(None, "GET", slots(mira, general, &day), Value::Null).await.unwrap().1;
+    assert!(!free["times"].as_array().unwrap().iter().any(|v| v == "09:20"), "a booked time is not offered");
+    refused(call(None, "GET", slots(omar, general, &day), Value::Null).await, "not found", "");
+    refused(call(None, "GET", slots(mira, dentistry, &day), Value::Null).await, "not found", "");
+    refused(call(None, "GET", slots(mira, general, &(today - chrono::Duration::days(1)).to_string()), Value::Null).await, "invalid", "is from");
+    let ask = |time: &str| json!({"practitioner": mira.to_string(), "type": general.to_string(), "date": day, "time": time, "name": "Cleo Park", "email": "Cleo@Home.test"});
+    refused(call(None, "POST", "book".into(), ask("09:20")).await, "invalid", "is not free");
+    assert_eq!(call(None, "POST", "book".into(), json!({"website": "x"})).await.unwrap(), (201, json!({"status": "received"})));
+    let (code, booked) = call(None, "POST", "book".into(), ask("09:00")).await.expect("booked online");
+    assert_eq!(
+        (code, booked["visit"]["status"].as_str(), booked["visit"]["practitioner"].as_str(), booked["visit"]["cancellable"].as_bool()),
+        (201, Some("Scheduled"), Some("Dr Mira Shah"), Some(true))
+    );
+    assert!(booked["visit"].get("notes").is_none() && booked["visit"].get("patient").is_none(), "nothing clinical or personal: {booked}");
+    let token = booked["token"].as_str().unwrap().to_string();
+    let cleo = t.find_one("Patient", json!({"email": "cleo@home.test"})).await;
+    assert_eq!(cleo["source"], "Online");
+    let cleo = uid(&cleo["id"]);
+    let (_, second) = call(None, "POST", "book".into(), ask("09:40")).await.expect("a second visit");
+    assert_eq!(
+        t.k.list(
+            &a,
+            "Patient",
+            &ListQuery { filters: ferrum_kernel::query::parse_filters(&json!({"email": "cleo@home.test"})).unwrap(), ..Default::default() }
+        )
+        .await
+        .unwrap()
+        .rows
+        .len(),
+        1,
+        "the patient known by the email"
+    );
+    let first_online = t.find_one("Appointment", json!({"patient": cleo.to_string(), "time": "09:00"})).await;
+    assert!(first_online["source"] == "Online" && first_online["token_hash"].as_str().is_some_and(|h| h.len() == 64 && h != token));
+    let mine = call(None, "GET", format!("manage/{token}"), Value::Null).await.unwrap().1;
+    assert_eq!(mine["visit"]["time"], "09:00");
+    let undone = call(None, "POST", format!("manage/{token}/cancel"), Value::Null).await.expect("cancelled by its link").1;
+    assert_eq!(undone["visit"]["status"], "Cancelled");
+    refused(call(None, "POST", format!("manage/{token}/cancel"), Value::Null).await, "invalid", "is not cancelled online");
+    refused(call(None, "GET", format!("manage/{}", "A".repeat(43)), Value::Null).await, "not found", "");
+    // A reminder the day before, once; a visit later in the week waits for its own day.
+    let wednesday = (monday + chrono::Duration::days(2)).to_string();
+    let later_visit = uid(&t.k.insert(&desk, "Appointment", book(cleo, mira, general, &wednesday, "14:00")).await.expect("Wednesday")["id"]);
+    let eve = (monday - chrono::Duration::days(1)).and_hms_opt(10, 0, 0).unwrap();
+    ferrum_app_healthcare::maintenance_at(&k, eve).await.expect("upkeep");
+    ferrum_app_healthcare::maintenance_at(&k, eve).await.expect("upkeep again");
+    let mails = |to: &'static str| {
+        let k = k.clone();
+        async move {
+            let mut tx = k.db.tenant_tx(tenant_id).await.unwrap();
+            let n: i64 = sqlx::query_scalar("select count(*) from outbox where tenant_id = $1 and topic = 'ferrum.mail' and payload->>'to' = $2")
+                .bind(tenant_id)
+                .bind(to)
+                .fetch_one(&mut *tx)
+                .await
+                .unwrap();
+            n
+        }
+    };
+    assert_eq!(mails("cleo@home.test").await, 1, "the 09:40 visit reminded once; the cancelled one not");
+    let reminded = uid(&second["visit"]["id"]);
+    assert!(t.get("Appointment", reminded).await["reminded_at"].is_string());
+    assert!(t.get("Appointment", later_visit).await["reminded_at"].is_null(), "not yet");
+    // The patient's portal: their visits, the consent a coming visit needs, given there, and cancelling.
+    let portal = |email: &'static str| {
+        let k = k.clone();
+        let a = a.clone();
+        async move {
+            let id = k.create_user(&a, email, "Patient", None, &[], false).await.unwrap();
+            k.set_user_kind(&a, id, "portal").await.unwrap();
+            k.load_ctx(a.tenant, id, None, "it".into()).await.unwrap()
+        }
+    };
+    t.k.insert(&desk, "Appointment", book(cleo, omar, dentistry, &day, "14:00")).await.expect("a dental visit at the desk");
+    let cleo_p = portal("cleo@home.test").await;
+    let seen = call(Some(cleo_p.clone()), "GET", "portal/visits".into(), Value::Null).await.unwrap().1;
+    let me = &seen["patients"][0];
+    assert_eq!((seen["patients"].as_array().unwrap().len(), me["visits"].as_array().unwrap().len()), (1, 4), "{seen}");
+    assert_eq!((me["consents_needed"][0]["name"].as_str(), me["consents_needed"][0]["version"].as_i64()), (Some("Dental treatment and X-rays"), Some(2)));
+    let gave =
+        call(Some(cleo_p.clone()), "POST", "portal/consent".into(), json!({"patient": cleo.to_string(), "form": form_id.to_string()})).await.expect("given").1;
+    assert_eq!(gave["version"], 2);
+    let seen = call(Some(cleo_p.clone()), "GET", "portal/visits".into(), Value::Null).await.unwrap().1;
+    assert!(seen["patients"][0]["consents_needed"].as_array().unwrap().is_empty());
+    let bens = t.find_one("Appointment", json!({"patient": ben.to_string(), "date": day, "time": "09:20"})).await;
+    refused(call(Some(cleo_p.clone()), "POST", "portal/cancel".into(), json!({"visit": bens["id"]})).await, "not found", "");
+    refused(
+        call(Some(cleo_p.clone()), "POST", "portal/consent".into(), json!({"patient": ben.to_string(), "form": form_id.to_string()})).await,
+        "not found",
+        "",
+    );
+    // Too close to cancel online: the clinic is called instead.
+    t.k.update(&manager, "HealthcareSettings", settings, obj(json!({"cancel_hours": 10000})), None).await.unwrap();
+    refused(call(Some(cleo_p.clone()), "POST", "portal/cancel".into(), json!({"visit": reminded.to_string()})).await, "invalid", "is not cancelled online");
+    t.k.update(&manager, "HealthcareSettings", settings, obj(json!({"cancel_hours": 2})), None).await.unwrap();
+    let off = call(Some(cleo_p), "POST", "portal/cancel".into(), json!({"visit": reminded.to_string()})).await.expect("cancelled on the portal").1;
+    assert_eq!(off["visit"]["status"], "Cancelled");
+    let stranger = portal("nobody@else.test").await;
+    assert!(call(Some(stranger), "GET", "portal/visits".into(), Value::Null).await.unwrap().1["patients"].as_array().unwrap().is_empty());
+    assert!(matches!(call(None, "GET", "portal/visits".into(), Value::Null).await, Err(Error::Unauthorized(_))));
+
+    // ───────────── an insurer's share ─────────────
+    let star = uid(&t.insert(&a, "Customer", json!({"customer_name": "Star Health", "customer_type": "Company"})).await["id"]);
+    let insured = |name: &'static str| {
+        let (t, desk) = (&t, desk.clone());
+        async move {
+            uid(&t
+                .insert(&desk, "Patient", json!({"patient_name": name, "insurer": star.to_string(), "policy_number": "SH-1", "coverage_percent": "80"}))
+                .await["id"])
+        }
+    };
+    // Each its own patient: a follow-up the same day would be covered, and not billed.
+    let (ivy, ian, isa) = (insured("Ivy Insured").await, insured("Ian Insured").await, insured("Isa Insured").await);
+    let visit_of = |patient: Uuid, time: &'static str| {
+        let (t, desk, omar_u, day) = (&t, desk.clone(), omar_u.clone(), day.clone());
+        async move {
+            let v = uid(&t.k.insert(&desk, "Appointment", book(patient, omar, general, &day, time)).await.unwrap()["id"]);
+            t.act(&desk, "Appointment", v, "check_in").await.unwrap();
+            t.act(&omar_u, "Appointment", v, "complete").await.unwrap()
+        }
+    };
+    let done = visit_of(ivy, "10:00").await;
+    let mine = t.get("SalesInvoice", uid(&done["sales_invoice"]["id"])).await;
+    let claim = t.get("InsuranceClaim", uid(&done["claim"]["id"])).await;
+    let theirs = t.get("SalesInvoice", uid(&claim["sales_invoice"])).await;
+    assert_eq!(
+        (dec(&mine["grand_total"]), dec(&theirs["grand_total"]), theirs["customer"].as_str(), claim["status"].as_str(), dec(&claim["amount"])),
+        (240.0, 960.0, Some(star.to_string().as_str()), Some("Submitted"), 960.0),
+        "1200: 80% the insurer's, the rest Ivy's"
+    );
+    // Refused while its invoice is a draft: the share is Ivy's, the insurer's draft goes.
+    let theirs_id = uid(&theirs["id"]);
+    refused(t.k.run_action(&desk, "InsuranceClaim", uid(&claim["id"]), "reject", json!({})).await, "invalid", "");
+    let rejected = t.k.run_action(&desk, "InsuranceClaim", uid(&claim["id"]), "reject", json!({"reason": "not covered for this"})).await.expect("rejected");
+    assert_eq!(rejected["message"], "Rejected: the patient is billed 960.00 instead (a draft)");
+    refused(t.k.get(&a, "SalesInvoice", theirs_id, false).await, "not found", "");
+    let claim_now = t.get("InsuranceClaim", uid(&claim["id"])).await;
+    let billed_instead = t.get("SalesInvoice", uid(&claim_now["patient_invoice"])).await;
+    assert_eq!(
+        (claim_now["status"].as_str(), dec(&billed_instead["grand_total"]), billed_instead["customer"].clone()),
+        (Some("Rejected"), 960.0, mine["customer"].clone())
+    );
+    // Refused once issued: the insurer is credited it.
+    let issued = visit_of(ian, "10:20").await;
+    let claim2 = t.get("InsuranceClaim", uid(&issued["claim"]["id"])).await;
+    t.k.submit(&a, "SalesInvoice", uid(&claim2["sales_invoice"]), None).await.expect("sent to the insurer");
+    t.k.run_action(&desk, "InsuranceClaim", uid(&claim2["id"]), "reject", json!({"reason": "policy lapsed"})).await.expect("rejected");
+    let note = t.get("SalesInvoice", uid(&t.get("InsuranceClaim", uid(&claim2["id"])).await["credit_note"])).await;
+    assert_eq!((note["is_return"].as_bool(), note["return_against"].clone()), (Some(true), claim2["sales_invoice"].clone()));
+    // Paid by the insurer: upkeep marks it paid.
+    let paid = visit_of(isa, "10:40").await;
+    let claim3 = uid(&paid["claim"]["id"]);
+    let theirs3 = uid(&t.get("InsuranceClaim", claim3).await["sales_invoice"]);
+    t.k.submit(&a, "SalesInvoice", theirs3, None).await.unwrap();
+    ferrum_app_healthcare::maintenance_at(&k, eve).await.unwrap();
+    assert_eq!(t.get("InsuranceClaim", claim3).await["status"], "Submitted", "sent, not paid yet");
+    let pay = t.k.run_action(&a, "SalesInvoice", theirs3, "make_payment", Value::Null).await.expect("a payment");
+    t.k.submit(&a, "PaymentEntry", uid(&pay["id"]), None).await.expect("paid");
+    ferrum_app_healthcare::maintenance_at(&k, eve).await.unwrap();
+    assert_eq!(t.get("InsuranceClaim", claim3).await["status"], "Paid");
+    refused(t.k.run_action(&desk, "InsuranceClaim", claim3, "reject", json!({"reason": "late"})).await, "invalid", "not available");
 }

@@ -34,6 +34,20 @@ legal review says so.
   validity).
 - **Under way or over.** A visit checked in, completed, cancelled or missed keeps its patient,
   practitioner and time. It is marked missed only once it has begun, on the workspace's clock.
+- **Booking online.** Where the clinic books online, its public page (/healthcare/book/{workspace})
+  offers the practitioners and kinds of visit it books online, a day's free times (within the hours,
+  clashing with nothing, after now), and books one with a name and email: the patient known by that
+  email, or a new one. The visit's own link (only its hash kept) shows it and cancels it until the
+  settings' hours before. Nothing clinical or personal is shown, and writes are limited.
+- **Reminders.** Upkeep emails each patient the settings' hours before a visit, once.
+- **The patients' portal.** Signed in to the workspace's portal, a person sees the patients known by
+  their address (themselves, or a child): their visits, cancelled there while they may still be,
+  the consents their coming visits need (each form's current version), given there, and their
+  invoices. Nothing clinical.
+- **Insurance.** A patient may name an insurer, a policy and the insurer's share. Completing their
+  visit bills the patient the rest and the insurer its share as an Insurance Claim. Upkeep marks a
+  claim paid once its invoice is settled; rejected, the share is billed to the patient instead, and
+  the insurer's invoice dropped while a draft, or credited once issued.
 
 ## Develop
 
@@ -52,14 +66,15 @@ cd ui && npm run build && npm run check
 
 - Clinical records: encounters, diagnoses, prescriptions, lab tests and results.
 - Inpatients, service units and rooms, and practitioners' leave and holidays.
-- Reminders to patients, online booking and a patients' portal.
-- Insurance claims and payers.
+- Reminders by text message, and payment online (ERP's invoices page shows what is due).
+- Insurers' own portals, pre-authorisations and electronic claims (claims are invoices to the insurer).
 - Any claim to meet health-data law (BLOCK-LEGAL-REVIEW).
 
 ## Changelog
 
 | Version | Highlights |
 |---|---|
+| **0.2.0** | Booking online, reminders, the patients' portal, insurers' shares claimed (FEO-048). |
 | **0.1.16** | Its names in Arabic and Hindi. |
 | **0.1.15** | The assistant knows its records; personal and health details in field groups. |
 | **0.1.14** | Rebuilt with Ferrum-Frontend 5b22e7b: its own words in Arabic and Hindi. |

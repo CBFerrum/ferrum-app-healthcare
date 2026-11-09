@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.0
+
+The administrative profile completed, with its safeguards (FEO-048).
+
+- **Booking online** (settings' Booked Online; practitioners and visit types marked Booked Online): a public page (/healthcare/book/{workspace}, `shell.public`) offering a day's free times within the practitioner's hours, clashing with nothing, after now; a visit booked with a name and email, for the patient known by that email or a new one (source Online). The visit's own link (only its SHA-256 kept) shows and cancels it until the settings' Cancel Online Until hours before. Nothing clinical or personal is shown; writes are limited per address.
+- **Reminders**: upkeep queues an email to the patient the settings' Remind hours before a visit, once (Reminded At).
+- **The patients' portal** (`shell.portal` visits): the patients known by the person's address, their visits (cancelled there within the same window), the consents their coming visits need (the form's current version, given there and recorded as given on the portal), and their issued invoices. Nothing clinical.
+- **Insurance**: a patient's Insurer, Policy Number and Coverage %. Completing a visit bills the patient the rest and the insurer its share as an Insurance Claim (Submitted). Upkeep marks it Paid once its invoice is settled; Rejected by the Insurer (with a reason) bills the share to the patient instead and drops the insurer's draft invoice, or credits it once issued.
+- Names and words in Arabic and Hindi for the new fields and pages.
+
 ## 0.1.16
 
 Rebuilt with Ferrum-Frontend c59c9a2: the names of its models, fields and manifest in Arabic and Hindi (109 each in ui/src/locales/names, which the platform serves to every page of the workspace, so a record's labels, the launcher and the bar read in the person's language). Translated by the model, to be reviewed by native speakers.

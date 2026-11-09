@@ -4,8 +4,8 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StrictMode, useEffect } from "react";
 import { createRoot } from "react-dom/client";
-import { createBrowserRouter, Link, RouterProvider, useRouteError } from "react-router";
-import { addCatalogs, routeBase, shell, t, wordsReady } from "@ferrum/client";
+import { createBrowserRouter, Link, Outlet, RouterProvider, useRouteError } from "react-router";
+import { addCatalogs, bootstrap, routeBase, shell, t, wordsReady } from "@ferrum/client";
 import { ConfirmHost, EmptyState, ErrorState, Toaster } from "@ferrum/kit";
 import { RequireAuth, setFrameMode } from "@ferrum/records/frame";
 import "./styles.css";
@@ -34,10 +34,41 @@ function Started() {
   return null;
 }
 
-setFrameMode("app", ["healthcare"]);
+/** A page outside the frame: started, and drawn below. */
+function Bare() {
+  useEffect(() => shell().ready(), []);
+  return <Outlet />;
+}
 
-const router = createBrowserRouter(
-  [
+/** The patient's page of the portal, when the platform serves this release there. */
+const VISITS = "portal/visits";
+const onPortal = bootstrap()?.app?.entry === VISITS;
+
+if (!onPortal) setFrameMode("app", ["healthcare"]);
+
+const portalRoutes = [
+  {
+    path: "/",
+    element: (
+      <main>
+        <Bare />
+      </main>
+    ),
+    errorElement: <RouteError />,
+    children: [{ index: true, lazy: () => import("./patient/Visits").then((m) => ({ Component: m.VisitsPage })) }],
+  },
+];
+
+const staffRoutes = [
+  // For patients booking: no sign-in, no frame.
+  { path: "/book/:tenant", element: <Bare />, errorElement: <RouteError />, children: [{ index: true, lazy: () => import("./patient/Book").then((m) => ({ Component: m.BookPage })) }] },
+  {
+    path: "/book/:tenant/visit/:token",
+    element: <Bare />,
+    errorElement: <RouteError />,
+    children: [{ index: true, lazy: () => import("./patient/Book").then((m) => ({ Component: m.VisitPage })) }],
+  },
+  { path: "/book/*", element: <EmptyState title={t("Page not found")} icon="calendar" /> },
     {
       path: "/",
       element: (
@@ -57,9 +88,9 @@ const router = createBrowserRouter(
         { path: "*", element: <NotFound /> },
       ],
     },
-  ],
-  { basename: routeBase("healthcare") },
-);
+];
+
+const router = onPortal ? createBrowserRouter(portalRoutes, { basename: routeBase(VISITS) }) : createBrowserRouter(staffRoutes, { basename: routeBase("healthcare") });
 
 // Drawn once the page's words are in (its language's catalogs, fetched as the page starts).
 void wordsReady().then(() =>

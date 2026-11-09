@@ -13,7 +13,10 @@
 //! is claimed to be met (BLOCK-LEGAL-REVIEW).
 
 mod appointments;
+mod claims;
 mod consent;
+mod reminders;
+mod site;
 
 use ferrum_domain::reports::ReportSource;
 use ferrum_kernel::{Doc, HookRegistry, Kernel, Result};
@@ -37,7 +40,9 @@ pub fn register(hooks: &mut HookRegistry) {
         .register("Appointment", Arc::new(appointments::AppointmentHook))
         .register("Practitioner", Arc::new(appointments::PractitionerHook))
         .register("ConsentForm", Arc::new(consent::FormHook))
-        .register("PatientConsent", Arc::new(consent::ConsentHook));
+        .register("PatientConsent", Arc::new(consent::ConsentHook))
+        .register("InsuranceClaim", Arc::new(claims::ClaimHook))
+        .add_site("healthcare", Arc::new(site::ClinicSite));
 }
 
 /// This app's reports: none of its own yet; what is billed is ERP's receivables.
@@ -46,8 +51,34 @@ pub fn reports() -> Vec<Arc<dyn ReportSource>> {
 }
 
 /// Upkeep: nothing runs by itself.
-pub async fn maintenance(_k: &Kernel) -> Result<()> {
-    Ok(())
+pub async fn maintenance(k: &Kernel) -> Result<()> {
+    upkeep_all(k, None).await
+}
+
+/// Upkeep as if every workspace's clock read `now` (its local time): for tests.
+pub async fn maintenance_at(k: &Kernel, now: chrono::NaiveDateTime) -> Result<()> {
+    upkeep_all(k, Some(now)).await
+}
+
+async fn upkeep_all(k: &Kernel, now: Option<chrono::NaiveDateTime>) -> Result<()> {
+    let mut tx = k.db.system_tx().await?;
+    let tenants: Vec<uuid::Uuid> = sqlx::query_scalar("select id from tenant where status = 'active' order by id").fetch_all(&mut *tx).await?;
+    tx.commit().await?;
+    let mut first_error: Option<ferrum_kernel::Error> = None;
+    for tenant in tenants {
+        match k.registry.schema(tenant).await {
+            Ok(s) if s.packages.iter().any(|p| p == "healthcare") => {
+                if let Err(e) = reminders::upkeep(k, tenant, s, now).await {
+                    first_error.get_or_insert(e);
+                }
+            }
+            Ok(_) => {}
+            Err(e) => {
+                first_error.get_or_insert(e);
+            }
+        }
+    }
+    first_error.map_or(Ok(()), Err)
 }
 
 /// A document from JSON.
