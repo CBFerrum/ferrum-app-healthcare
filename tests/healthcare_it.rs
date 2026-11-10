@@ -221,7 +221,9 @@ async fn scenario() {
 
     // ───────────── completing and billing ─────────────
     t.act(&desk, "Appointment", first, "check_in").await.unwrap();
-    refused(t.k.update(&desk, "Appointment", first, obj(json!({"time": "11:30"})), None).await, "invalid", "keeps its patient, practitioner and time");
+    // A visit under way keeps its patient, practitioner and time: the form shows them read-only, and a change sent anyway is ignored.
+    let kept = t.k.update(&desk, "Appointment", first, obj(json!({"time": "11:30", "date": "2030-01-01"})), None).await.expect("nothing to refuse");
+    assert_eq!((kept["date"].clone(), kept["time"].clone(), kept["status"].clone()), (json!("2026-11-09"), json!("09:00"), json!("Checked In")), "{kept:?}");
     refused(t.act(&desk, "Appointment", first, "complete").await, "forbidden", "");
     refused(t.act(&omar_u, "Appointment", first, "complete").await, "forbidden", "the visit's practitioner");
     let done = t.act(&mira_u, "Appointment", first, "complete").await.expect("completed by Dr Shah");
