@@ -74,6 +74,7 @@ cd ui && npm run build && npm run check
 
 | Version | Highlights |
 |---|---|
+| **0.3.0** | The Patient Portal role: the patients' portal as configuration; cancelling from outside held to the clinic's window. |
 | **0.2.0** | Booking online, reminders, the patients' portal, insurers' shares claimed (FEO-048). |
 | **0.1.16** | Its names in Arabic and Hindi. |
 | **0.1.15** | The assistant knows its records; personal and health details in field groups. |
