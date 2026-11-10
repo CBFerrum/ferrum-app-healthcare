@@ -103,7 +103,7 @@ fn uuid_of(v: Option<&Value>) -> Option<Uuid> {
 }
 
 /// The clinic's settings for patients: (books online, hours before a visit it may still be cancelled).
-async fn settings(tx: &mut Tx, tenant: Uuid) -> Result<(bool, i64)> {
+pub(crate) async fn settings(tx: &mut Tx, tenant: Uuid) -> Result<(bool, i64)> {
     let row: Option<(Option<bool>, Option<i64>)> = sqlx::query_as("select book_online, cancel_hours from e_healthcare_settings where tenant_id = $1 limit 1")
         .bind(tenant)
         .fetch_optional(&mut **tx)
@@ -234,7 +234,7 @@ async fn view(k: &Kernel, ctx: &Ctx, tx: &mut Tx, visit: &Doc, cancel_hours: i64
 }
 
 /// Whether a patient may still cancel a visit: scheduled, and the settings' hours or more away.
-fn cancellable(ctx: &Ctx, visit: &Doc, hours: i64) -> bool {
+pub(crate) fn cancellable(ctx: &Ctx, visit: &Doc, hours: i64) -> bool {
     let starts = s(visit, "date")
         .and_then(|d| NaiveDate::parse_from_str(d.get(..10).unwrap_or(d), "%Y-%m-%d").ok())
         .and_then(|d| d.and_hms_opt(0, 0, 0))
