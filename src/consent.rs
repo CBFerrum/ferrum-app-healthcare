@@ -65,12 +65,16 @@ impl DocHook for ConsentHook {
     }
 
     fn fills(&self) -> &'static [&'static str] {
-        &["form_version", "given_at"]
+        &["form_version", "given_at", "given_by"]
     }
 
     async fn before_validate(&self, hc: &mut HookCtx<'_>, doc: &mut Doc) -> Result<()> {
         if doc.get("form_version").is_some_and(|v| !v.is_null()) {
             return Ok(());
+        }
+        // Given on the portal, it is given by whoever signed in there, whatever they typed.
+        if hc.ctx.outside {
+            doc.insert("given_by".into(), json!(format!("{}, on the portal as {}", hc.ctx.full_name, hc.ctx.email)));
         }
         let form = id(doc, "consent_form").ok_or_else(|| Error::field("consent_form", "is required"))?;
         let version: Option<i64> = sqlx::query_scalar("select revision from e_consent_form where tenant_id = $1 and id = $2")

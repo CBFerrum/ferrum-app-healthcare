@@ -49,6 +49,17 @@ roles:
       - {entity: Practitioner, read: true}
       - {entity: AppointmentType, read: true}
 
+  # The patients' portal as configuration (Ferrum docs/builder/decisions.md BD-02): a patient's own
+  # record, their visits, cancelling one while it may still be cancelled online, and their consents.
+  # Nothing in the personal or clinical groups. Given by administrators to portal people.
+  - name: Patient Portal
+    description: For patients on the portal - their own record, visits and consents, reached by the address they sign in with.
+    portal: true
+    permissions:
+      - {entity: Patient, read: true, via: email}
+      - {entity: Appointment, read: true, via: patient.email, actions: [cancel_appointment]}
+      - {entity: PatientConsent, read: true, create: true, via: patient.email}
+
 personal_data:
   - {entity: Patient, match: email, phone: mobile, name: patient_name, retain: "Medical records, kept as long as health law requires"}
   - {entity: Appointment, match: patient, retain: "Medical records, kept as long as health law requires"}

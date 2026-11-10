@@ -187,7 +187,20 @@ impl DocHook for AppointmentHook {
                 hc.kernel.set_values_tx(&system, hc.tx, "Appointment", appointment, obj(json!({"status": "Completed"}))).await?;
                 return Ok(Some(out));
             }
-            "cancel_appointment" => "Cancelled",
+            "cancel_appointment" => {
+                // Someone outside the clinic (a patient on the portal, through a portal role naming
+                // this action) cancels only while the visit may still be cancelled online, as on its
+                // link; the clinic's people cancel at any time.
+                if hc.ctx.outside {
+                    let (_, hours) = crate::site::settings(hc.tx, hc.ctx.tenant).await?;
+                    if !crate::site::cancellable(hc.ctx, doc, hours) {
+                        return Err(Error::invalid(format!(
+                            "this visit is not cancelled online: it is less than {hours} hours away, or not scheduled; call the clinic"
+                        )));
+                    }
+                }
+                "Cancelled"
+            }
             "no_show" => {
                 // Missed only once it was due: not before it begins, on the workspace's clock.
                 let (day, start, _) = when(doc)?;
