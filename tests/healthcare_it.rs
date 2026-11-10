@@ -411,8 +411,9 @@ async fn scenario() {
             k.load_ctx(a.tenant, id, None, "it".into()).await.unwrap()
         }
     };
-    t.k.insert(&desk, "Appointment", book(cleo, omar, dentistry, &day, "14:00")).await.expect("a dental visit at the desk");
+    let dental = uid(&t.k.insert(&desk, "Appointment", book(cleo, omar, dentistry, &day, "14:00")).await.expect("a dental visit at the desk")["id"]);
     let cleo_p = portal("cleo@home.test").await;
+    let cleo_user = cleo_p.user;
     let seen = call(Some(cleo_p.clone()), "GET", "portal/visits".into(), Value::Null).await.unwrap().1;
     let me = &seen["patients"][0];
     assert_eq!((seen["patients"].as_array().unwrap().len(), me["visits"].as_array().unwrap().len()), (1, 4), "{seen}");
@@ -438,6 +439,45 @@ async fn scenario() {
     let stranger = portal("nobody@else.test").await;
     assert!(call(Some(stranger), "GET", "portal/visits".into(), Value::Null).await.unwrap().1["patients"].as_array().unwrap().is_empty());
     assert!(matches!(call(None, "GET", "portal/visits".into(), Value::Null).await, Err(Error::Unauthorized(_))));
+
+    // ───────────── the same portal as configuration (Ferrum BF-PORTAL-006) ─────────────
+    // The package's Patient Portal role, given to her: no app code between her and her records.
+    t.k.set_user_roles_until(&a, cleo_user, &["Patient Portal".to_string()], &Default::default()).await.expect("a portal role for a portal person");
+    let cleo_g = t.k.load_ctx(t.tenant, cleo_user, None, "it".into()).await.unwrap();
+    let ids = |rows: &[Value]| rows.iter().map(|r| r["id"].as_str().unwrap().to_string()).collect::<std::collections::BTreeSet<_>>();
+    let doc_ids = |rows: &[Doc]| rows.iter().map(|r| r["id"].as_str().unwrap().to_string()).collect::<std::collections::BTreeSet<_>>();
+    let page = call(Some(cleo_g.clone()), "GET", "portal/visits".into(), Value::Null).await.unwrap().1;
+    let on_page = ids(page["patients"][0]["visits"].as_array().unwrap());
+    let generic = t.k.list(&cleo_g, "Appointment", &ListQuery { limit: Some(500), ..Default::default() }).await.unwrap().rows;
+    assert_eq!(doc_ids(&generic), on_page, "the configured portal reaches exactly the visits the app's page shows");
+    assert!(t.k.get(&cleo_g, "Appointment", uid(&bens["id"]), false).await.is_err(), "another patient's visit");
+    let mine = t.k.list(&cleo_g, "Patient", &ListQuery::default()).await.unwrap().rows;
+    assert_eq!(doc_ids(&mine), [cleo.to_string()].into_iter().collect(), "her own record, no one else's");
+    for hidden in ["date_of_birth", "policy_number", "allergies"] {
+        assert!(mine[0].get(hidden).is_none_or(Value::is_null), "{hidden}, a personal or clinical field, reached the portal");
+    }
+    // Cancelling, as the app's page does: within the clinic's window, and only her own.
+    t.k.update(&manager, "HealthcareSettings", settings, obj(json!({"cancel_hours": 10000})), None).await.unwrap();
+    refused(t.act(&cleo_g, "Appointment", dental, "cancel_appointment").await, "invalid", "is not cancelled online");
+    t.k.update(&manager, "HealthcareSettings", settings, obj(json!({"cancel_hours": 2})), None).await.unwrap();
+    refused(t.act(&cleo_g, "Appointment", uid(&bens["id"]), "cancel_appointment").await, "not found", "");
+    assert!(t.k.update(&cleo_g, "Appointment", dental, obj(json!({"time": "16:00"})), None).await.is_err(), "the role cancels; it does not move visits");
+    t.act(&cleo_g, "Appointment", dental, "cancel_appointment").await.expect("cancelled through the portal role");
+    assert_eq!(t.get("Appointment", dental).await["status"], "Cancelled");
+    // Consenting: for her own record, given by whoever signed in, whatever was typed.
+    let given = t
+        .k
+        .insert(&cleo_g, "PatientConsent", obj(json!({"patient": cleo.to_string(), "consent_form": form_id.to_string(), "given_by": "the clinic's director"})))
+        .await
+        .expect("consent given");
+    assert_eq!(given["given_by"], "Patient, on the portal as cleo@home.test");
+    let for_ben = t.k.insert(&cleo_g, "PatientConsent", obj(json!({"patient": ben.to_string(), "consent_form": form_id.to_string(), "given_by": "Ben"}))).await;
+    assert!(matches!(for_ben, Err(Error::Forbidden(_))), "a consent for someone else: {for_ben:?}");
+    // The clinic's people cancel whenever they must: the window is the portal's alone.
+    t.k.update(&manager, "HealthcareSettings", settings, obj(json!({"cancel_hours": 10000})), None).await.unwrap();
+    let late = uid(&t.k.insert(&desk, "Appointment", book(cleo, omar, dentistry, &day, "15:00")).await.expect("another")["id"]);
+    t.act(&desk, "Appointment", late, "cancel_appointment").await.expect("the desk cancels within the window");
+    t.k.update(&manager, "HealthcareSettings", settings, obj(json!({"cancel_hours": 2})), None).await.unwrap();
 
     // ───────────── an insurer's share ─────────────
     let star = uid(&t.insert(&a, "Customer", json!({"customer_name": "Star Health", "customer_type": "Company"})).await["id"]);

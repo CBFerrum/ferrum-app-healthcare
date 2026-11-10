@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.0
+
+The patients' portal as configuration too (Ferrum's builder-first gate BF1, docs/builder/portal.md).
+
+- **Patient Portal**, a portal role the package ships: a patient's own record, their visits and consents, reached through the address they sign in with (`via: email`, `via: patient.email`), on the portal's generic Your records page. It cancels a visit (it names `cancel_appointment`) without editing one, and gives consents. Nothing in the personal or clinical groups. Administrators give it to portal people and may change it like any role.
+- **Cancelling from outside the clinic** is held to the settings' Cancel Online Until window, however it is asked (a portal role, as the visit's link and the visits page always were); the clinic's people still cancel at any time.
+- **A consent given on the portal** is recorded as given by whoever signed in there, whatever was typed.
+- Needs Ferrum with portal roles (BF1).
+
 ## 0.2.0
 
 The administrative profile completed, with its safeguards (FEO-048).
