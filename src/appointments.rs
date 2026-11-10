@@ -142,19 +142,6 @@ impl DocHook for AppointmentHook {
         Ok(())
     }
 
-    async fn validate_change(&self, hc: &mut HookCtx<'_>, old: Option<&Doc>, doc: &Doc) -> Result<()> {
-        if hc.ctx.is_system {
-            return Ok(());
-        }
-        if let Some(o) = old
-            && !matches!(s(o, "status"), Some("Scheduled") | None)
-            && ["patient", "practitioner", "appointment_type", "date", "time"].iter().any(|k| s(o, k) != s(doc, k))
-        {
-            return Err(Error::invalid("a visit under way or over keeps its patient, practitioner and time"));
-        }
-        Ok(())
-    }
-
     async fn action(&self, hc: &mut HookCtx<'_>, name: &str, doc: &Doc, _params: &Value) -> Result<Option<Value>> {
         let appointment = id(doc, "id").ok_or_else(|| Error::internal("an appointment without an id"))?;
         let system = elevated(hc.ctx);
