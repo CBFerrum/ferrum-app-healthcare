@@ -5,14 +5,14 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { refusal, t, isolate } from "@ferrum/client";
-import { Badge, Button, confirmDialog, EmptyState, ErrorState, PageLoading, statusTone, toast, useShellTitle } from "@ferrum/kit";
-import { cancelMine, giveConsent, inOrder, myVisits, type Patient } from "./api";
+import { Badge, Button, confirmDialog, EmptyState, ErrorState, ListSkeleton, statusTone, toast, useShellTitle } from "@ferrum/kit";
+import { APPOINTMENT_TONES, cancelMine, giveConsent, inOrder, myVisits, type Patient } from "./api";
 
 export function VisitsPage() {
   useShellTitle(t("Your visits"));
   const q = useQuery({ queryKey: ["hc-mine"], queryFn: ({ signal }) => myVisits(signal) });
   if (q.error) return <ErrorState error={q.error} onRetry={() => void q.refetch()} />;
-  if (!q.data) return <PageLoading />;
+  if (!q.data) return <ListSkeleton className="hc-portal" />;
   return (
     <div className="stack hc-portal">
       <div className="page-head">
@@ -63,7 +63,7 @@ function PatientCard({ patient }: { patient: Patient }) {
           {inOrder(patient.visits, today).map((v) => (
             <li key={v.id} className="row" style={{ justifyContent: "space-between" }}>
               <span>
-                {isolate(`${v.date} ${v.time}`)} · {isolate(v.practitioner ?? "")} · {isolate(v.type ?? "")} <Badge tone={statusTone(v.status)}>{isolate(v.status)}</Badge>
+                {isolate(`${v.date} ${v.time}`)} · {isolate(v.practitioner ?? "")} · {isolate(v.type ?? "")} <Badge tone={statusTone(v.status, APPOINTMENT_TONES)}>{isolate(v.status)}</Badge>
               </span>
               {v.cancellable && (
                 <Button

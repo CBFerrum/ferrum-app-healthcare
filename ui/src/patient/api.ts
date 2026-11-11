@@ -5,6 +5,9 @@
 
 import { api } from "@ferrum/client";
 
+/** Appointment.status as stored (packages/healthcare/entities), for `statusTone`. */
+export const APPOINTMENT_TONES = { Scheduled: "blue", "Checked In": "amber", Completed: "green", Cancelled: "neutral", "No Show": "red" } as const;
+
 export interface Options {
   practitioners: { id: string; name: string; department: string | null }[];
   types: { id: string; name: string; minutes: number | null }[];
