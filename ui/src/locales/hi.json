@@ -14,7 +14,6 @@
   "Email": "ईमेल",
   "Free times": "खाली समय",
   "Go to the day": "दिन पर जाएँ",
-  "Healthcare": "स्वास्थ्य सेवा",
   "I consent": "मैं सहमत हूँ",
   "Invoices": "चालान",
   "It opens only the visit it was given for.": "यह केवल उसी विज़िट को खोलता है जिसके लिए दिया गया था।",
@@ -30,6 +29,7 @@
   "No visits yet.": "अभी कोई विज़िट नहीं।",
   "Nothing booked.": "कुछ बुक नहीं है।",
   "Once the clinic knows you by this address, your visits are here.": "जब क्लिनिक आपको इस पते से जानेगा, आपकी विज़िट यहाँ दिखेंगी।",
+  "Open": "खोलें",
   "Page not found": "पेज नहीं मिला",
   "Paid": "चुकाया गया",
   "Please call the clinic to book.": "बुक करने के लिए कृपया क्लिनिक को फ़ोन करें।",
@@ -50,6 +50,7 @@
   "Your visits": "आपकी विज़िट",
   "Your visits, the consents they need, and your invoices.": "आपकी विज़िट, उनके लिए ज़रूरी सहमतियाँ, और आपके चालान।",
   "{date} at {time}": "{date} को {time} बजे",
+  "{day} · {n} booked": "{day} · {n} बुक",
   "{name}, version {version}": "{name}, संस्करण {version}",
   "{owed} still to pay": "{owed} अभी चुकाना है"
 }

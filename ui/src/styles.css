@@ -4,16 +4,15 @@
 @source "../../../ferrum/web/src";
 @source ".";
 
-.np-page {
-  display: grid;
-  gap: 16px;
-  padding: 16px;
+.hc-day-pick {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-sm);
 }
 
-.np-columns {
-  display: grid;
-  gap: 16px;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+.hc-day-pick .input {
+  width: auto;
 }
 
 /* The booking page: a column that reads on a phone. */
@@ -35,6 +34,17 @@
   max-width: 680px;
   margin: 0 auto;
   padding: 16px;
+}
+
+.hc-portal h2 {
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+
+.hc-head-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--control-h);
 }
 
 .hc-times {
