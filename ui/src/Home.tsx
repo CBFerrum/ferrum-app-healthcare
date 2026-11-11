@@ -6,7 +6,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link } from "react-router";
 import { api, docPath, todayIso, t, isolate } from "@ferrum/client";
-import { Badge, EmptyState, ErrorState, PageLoading, statusTone, useShellTitle } from "@ferrum/kit";
+import { Badge, EmptyState, ErrorState, ListSkeleton, statusTone, useShellTitle } from "@ferrum/kit";
+import { APPOINTMENT_TONES } from "./patient/api";
 
 export interface Row {
   id: string;
@@ -43,7 +44,7 @@ export function Home() {
     },
     refetchInterval: 30_000,
   });
-  if (q.isPending) return <PageLoading />;
+  if (q.isPending) return <ListSkeleton className="np-page" />;
   if (q.isError) return <ErrorState error={q.error} onRetry={() => void q.refetch()} />;
   const grouped = byPractitioner(q.data.appointments);
   return (
@@ -73,7 +74,7 @@ export function Home() {
                       <Link to={`/e/Appointment/${a.id}`}>
                         {isolate(String(a.time))} · {isolate(patientOf(a))}
                       </Link>{isolate(" ")}
-                      <Badge tone={statusTone(String(a.status))}>{isolate(String(a.status))}</Badge>
+                      <Badge tone={statusTone(String(a.status), APPOINTMENT_TONES)}>{isolate(String(a.status))}</Badge>
                     </li>
                   ))}
                 </ul>

@@ -6,7 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link, useParams } from "react-router";
 import { ApiError, bootstrap, refusal, t, isolate } from "@ferrum/client";
-import { Alert, Badge, Button, confirmDialog, EmptyState, ErrorState, Field, PageLoading } from "@ferrum/kit";
+import { Alert, Badge, Button, confirmDialog, EmptyState, ErrorState, Field, FormSkeleton } from "@ferrum/kit";
 import { book, type Booked, cancelByLink, freeTimes, options, visitByLink, visitLink } from "./api";
 
 function Page({ children }: { children: React.ReactNode }) {
@@ -51,7 +51,7 @@ export function BookPage() {
   if (q.isPending)
     return (
       <Page>
-        <PageLoading />
+        <FormSkeleton />
       </Page>
     );
   if (q.isError)
@@ -162,7 +162,7 @@ export function VisitPage() {
   if (q.isPending)
     return (
       <Page>
-        <PageLoading />
+        <FormSkeleton />
       </Page>
     );
   if (q.isError)
