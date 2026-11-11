@@ -4,11 +4,6 @@
 @source "../../../ferrum/web/src";
 @source ".";
 
-/* The day: the time leads each row, its digits one width so the times line up down a column. */
-.hc-day .queue-name {
-  font-variant-numeric: tabular-nums;
-}
-
 .hc-day-pick {
   display: flex;
   align-items: center;
@@ -41,67 +36,8 @@
   padding: 16px;
 }
 
-/* A visit or an invoice: when, what, where it stands, and the one action, wrapping on a phone. */
-.hc-list {
-  display: grid;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.hc-visit {
-  display: grid;
-  grid-template-areas: "when state" "what what" "act act";
-  grid-template-columns: 1fr auto;
-  align-items: center;
-  gap: 2px 12px;
-  min-height: 52px;
-  padding-block: 8px;
-  border-top: 1px solid var(--border);
-}
-
-.hc-act {
-  grid-area: act;
-  justify-self: start;
-  margin-block-start: 6px;
-}
-
-@media (min-width: 640px) {
-  .hc-visit {
-    grid-template-areas: "when what state act";
-    grid-template-columns: auto 1fr auto auto;
-  }
-  .hc-act {
-    margin-block-start: 0;
-  }
-}
-
-.hc-when {
-  grid-area: when;
-  font-variant-numeric: tabular-nums;
-  font-weight: 500;
-  white-space: nowrap;
-}
-
-.hc-what {
-  grid-area: what;
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
-.hc-state {
-  grid-area: state;
-  justify-self: end;
-}
-
 .hc-portal h2 {
   font-size: var(--text-lg);
-  font-weight: 600;
-}
-
-.hc-portal h3 {
-  color: var(--muted-foreground);
-  font-size: var(--text-sm);
   font-weight: 600;
 }
 
@@ -109,12 +45,6 @@
   display: inline-flex;
   align-items: center;
   min-height: var(--control-h);
-}
-
-.hc-link {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
 }
 
 .hc-times {
