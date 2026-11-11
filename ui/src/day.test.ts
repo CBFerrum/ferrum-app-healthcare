@@ -17,3 +17,14 @@ describe("the day", () => {
     expect(patientOf({ id: "b", patient: "0190-uuid" })).toBe("");
   });
 });
+
+describe("the day's badges", () => {
+  it("tones every stored status, and tells a status the map lacks as neutral", async () => {
+    const { APPOINTMENT_TONES } = await import("./patient/api");
+    const { statusTone } = await import("@ferrum/kit");
+    for (const s of ["Scheduled", "Checked In", "Completed", "Cancelled", "No Show"]) expect(Object.keys(APPOINTMENT_TONES)).toContain(s);
+    expect(statusTone("Checked In", APPOINTMENT_TONES)).toBe("amber");
+    expect(statusTone("No Show", APPOINTMENT_TONES)).toBe("red");
+    expect(statusTone("Something new", APPOINTMENT_TONES)).toBe("neutral");
+  });
+});

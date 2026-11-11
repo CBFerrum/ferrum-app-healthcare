@@ -14,7 +14,6 @@
   "Email": "البريد الإلكتروني",
   "Free times": "الأوقات المتاحة",
   "Go to the day": "اذهب إلى اليوم",
-  "Healthcare": "الرعاية الصحية",
   "I consent": "أوافق",
   "Invoices": "الفواتير",
   "It opens only the visit it was given for.": "لا يفتح إلا الزيارة التي أُعطي لها.",
@@ -50,6 +49,7 @@
   "Your visits": "زياراتك",
   "Your visits, the consents they need, and your invoices.": "زياراتك والموافقات التي تحتاجها وفواتيرك.",
   "{date} at {time}": "{date} الساعة {time}",
+  "{day} · {n} booked": "{day} · {n} محجوزة",
   "{name}, version {version}": "{name}، الإصدار {version}",
   "{owed} still to pay": "{owed} متبقٍّ للدفع"
 }

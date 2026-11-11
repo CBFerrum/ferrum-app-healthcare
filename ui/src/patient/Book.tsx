@@ -4,10 +4,11 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Link, useParams } from "react-router";
+import { useParams } from "react-router";
 import { ApiError, bootstrap, refusal, t, isolate } from "@ferrum/client";
-import { Alert, Badge, Button, confirmDialog, EmptyState, ErrorState, Field, FormSkeleton } from "@ferrum/kit";
-import { book, type Booked, cancelByLink, freeTimes, options, visitByLink, visitLink } from "./api";
+import { CalendarDays } from "lucide-react";
+import { Alert, ButtonLink, Button, confirmDialog, Field, FormSkeleton, LoadFailed, PageHead, StatePanel, StatusBadge } from "@ferrum/kit";
+import { APPOINTMENT_TONES, book, type Booked, cancelByLink, freeTimes, options, visitByLink, visitLink } from "./api";
 
 function Page({ children }: { children: React.ReactNode }) {
   return (
@@ -58,11 +59,11 @@ export function BookPage() {
     return (
       <Page>
         {closed(q.error) ? (
-          <EmptyState title={t("Visits are not booked online here")} icon="calendar">
-            <p className="muted">{t("Please call the clinic to book.")}</p>
-          </EmptyState>
+          <StatePanel kind="empty" title={t("Visits are not booked online here")} icon={CalendarDays}>
+            {t("Please call the clinic to book.")}
+          </StatePanel>
         ) : (
-          <ErrorState error={q.error} onRetry={() => void q.refetch()} />
+          <LoadFailed error={q.error} onRetry={() => void q.refetch()} />
         )}
       </Page>
     );
@@ -70,12 +71,18 @@ export function BookPage() {
     return (
       <Page>
         {"visit" in done ? (
-          <section className="card card-pad stack" aria-label={t("Booked")}>
-            <h1>{t("Booked: {date} at {time}", { date: done.visit.date, time: done.visit.time })}</h1>
-            <p>{t("With {practitioner}, for {type}.", { practitioner: done.visit.practitioner ?? "", type: done.visit.type ?? "" })}</p>
-            <p className="muted">{t("Keep your visit's link: it is how you see or cancel it.")}</p>
-            <Link to={visitLink(tenant, done.token)}>{t("Your visit")}</Link>
-          </section>
+          <>
+            <PageHead title={t("Booked: {date} at {time}", { date: done.visit.date, time: done.visit.time })} />
+            <section className="card card-pad stack" aria-label={t("Booked")}>
+              <p>{t("With {practitioner}, for {type}.", { practitioner: done.visit.practitioner ?? "", type: done.visit.type ?? "" })}</p>
+              <p className="muted">{t("Keep your visit's link: it is how you see or cancel it.")}</p>
+              <div>
+                <ButtonLink to={visitLink(tenant, done.token)} variant="primary">
+                  {t("Your visit")}
+                </ButtonLink>
+              </div>
+            </section>
+          </>
         ) : (
           <Alert tone="success">{t("Thank you: your request is in.")}</Alert>
         )}
@@ -84,7 +91,7 @@ export function BookPage() {
   return (
     <Page>
       <div className="stack">
-        <h1>{t("Book a visit")}</h1>
+        <PageHead title={t("Book a visit")} />
         <section className="card card-pad stack" aria-label={t("When")}>
           <Field label={t("Practitioner")}>
             <select className="select" value={practitioner} onChange={(e) => setPick({ ...pick, practitioner: e.target.value })}>
@@ -114,7 +121,7 @@ export function BookPage() {
                 <p className="muted">{t("No free time that day.")}</p>
               ) : (
                 times.data.times.map((x) => (
-                  <Button key={x} size="sm" variant={x === time ? "primary" : "default"} aria-pressed={x === time} onClick={() => setTime(x)}>
+                  <Button key={x} variant={x === time ? "primary" : "default"} aria-pressed={x === time} onClick={() => setTime(x)}>
                     {x}
                   </Button>
                 ))
@@ -169,22 +176,19 @@ export function VisitPage() {
     return (
       <Page>
         {closed(q.error) ? (
-          <EmptyState title={t("This link does not work")} icon="calendar">
-            <p className="muted">{t("It opens only the visit it was given for.")}</p>
-          </EmptyState>
+          <StatePanel kind="empty" title={t("This link does not work")} icon={CalendarDays}>
+            {t("It opens only the visit it was given for.")}
+          </StatePanel>
         ) : (
-          <ErrorState error={q.error} onRetry={() => void q.refetch()} />
+          <LoadFailed error={q.error} onRetry={() => void q.refetch()} />
         )}
       </Page>
     );
   const v = q.data.visit;
   return (
     <Page>
+      <PageHead title={t("{date} at {time}", { date: v.date, time: v.time })} actions={<span className="hc-head-badge"><StatusBadge value={v.status} tones={APPOINTMENT_TONES} /></span>} />
       <section className="card card-pad stack" aria-label={t("Your visit")}>
-        <div className="row" style={{ justifyContent: "space-between" }}>
-          <h1>{t("{date} at {time}", { date: v.date, time: v.time })}</h1>
-          <Badge tone={v.status === "Scheduled" ? "green" : "neutral"}>{isolate(v.status)}</Badge>
-        </div>
         <p>{t("With {practitioner}, for {type}.", { practitioner: v.practitioner ?? "", type: v.type ?? "" })}</p>
         {off.isError && <Alert tone="error">{refusal(off.error)}</Alert>}
         {v.cancellable && (
