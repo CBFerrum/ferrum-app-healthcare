@@ -4,27 +4,35 @@
 // (opening on ERP's "Your invoices"). Nothing clinical.
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { CalendarDays } from "lucide-react";
 import { refusal, t, isolate } from "@ferrum/client";
-import { Badge, Button, confirmDialog, EmptyState, ErrorState, ListSkeleton, statusTone, toast, useShellTitle } from "@ferrum/kit";
+import { Badge, Button, confirmDialog, HomeSkeleton, LoadFailed, PageHead, StatePanel, StatusBadge, toast } from "@ferrum/kit";
 import { APPOINTMENT_TONES, cancelMine, giveConsent, inOrder, myVisits, type Patient } from "./api";
 
 export function VisitsPage() {
-  useShellTitle(t("Your visits"));
   const q = useQuery({ queryKey: ["hc-mine"], queryFn: ({ signal }) => myVisits(signal) });
-  if (q.error) return <ErrorState error={q.error} onRetry={() => void q.refetch()} />;
-  if (!q.data) return <ListSkeleton className="hc-portal" />;
+  const head = <PageHead title={t("Your visits")} description={t("Your visits, the consents they need, and your invoices.")} />;
+  if (q.error)
+    return (
+      <div className="hc-portal">
+        {head}
+        <LoadFailed error={q.error} onRetry={() => void q.refetch()} />
+      </div>
+    );
+  if (!q.data)
+    return (
+      <div className="hc-portal">
+        <PageHead title={t("Your visits")} />
+        <HomeSkeleton queues={1} />
+      </div>
+    );
   return (
     <div className="stack hc-portal">
-      <div className="page-head">
-        <div>
-          <h1 className="page-title">{t("Your visits")}</h1>
-          <p className="page-sub">{t("Your visits, the consents they need, and your invoices.")}</p>
-        </div>
-      </div>
+      {head}
       {q.data.patients.length === 0 ? (
-        <EmptyState title={t("No visits here yet")} icon="calendar">
-          <p className="muted">{t("Once the clinic knows you by this address, your visits are here.")}</p>
-        </EmptyState>
+        <StatePanel kind="empty" title={t("No visits here yet")} icon={CalendarDays}>
+          {t("Once the clinic knows you by this address, your visits are here.")}
+        </StatePanel>
       ) : (
         q.data.patients.map((p) => <PatientCard key={p.id} patient={p} />)
       )}
@@ -49,7 +57,7 @@ function PatientCard({ patient }: { patient: Patient }) {
           <strong>{t("{name}, version {version}", { name: c.name, version: c.version ?? 1 })}</strong>
           <p className="hc-consent">{isolate(c.text)}</p>
           <div>
-            <Button size="sm" variant="primary" loading={agree.isPending} onClick={() => agree.mutate(c.form)}>
+            <Button variant="primary" loading={agree.isPending} onClick={() => agree.mutate(c.form)}>
               {t("I consent")}
             </Button>
           </div>
@@ -59,15 +67,17 @@ function PatientCard({ patient }: { patient: Patient }) {
       {patient.visits.length === 0 ? (
         <p className="muted">{t("No visits yet.")}</p>
       ) : (
-        <ul className="stack">
+        <ul className="hc-list">
           {inOrder(patient.visits, today).map((v) => (
-            <li key={v.id} className="row" style={{ justifyContent: "space-between" }}>
-              <span>
-                {isolate(`${v.date} ${v.time}`)} · {isolate(v.practitioner ?? "")} · {isolate(v.type ?? "")} <Badge tone={statusTone(v.status, APPOINTMENT_TONES)}>{isolate(v.status)}</Badge>
+            <li key={v.id} className="hc-visit">
+              <span className="hc-when">{isolate(`${v.date} ${v.time}`)}</span>
+              <span className="hc-what">{isolate([v.practitioner, v.type].filter(Boolean).join(" · "))}</span>
+              <span className="hc-state">
+                <StatusBadge value={v.status} tones={APPOINTMENT_TONES} />
               </span>
               {v.cancellable && (
                 <Button
-                  size="sm"
+                  className="hc-act"
                   loading={off.isPending && off.variables === v.id}
                   onClick={async () => {
                     if (await confirmDialog({ title: t("Cancel this visit?"), message: t("Its time is given up."), confirmLabel: t("Cancel it") })) off.mutate(v.id);
@@ -84,11 +94,14 @@ function PatientCard({ patient }: { patient: Patient }) {
       {patient.invoices.length === 0 ? (
         <p className="muted">{t("No invoices yet.")}</p>
       ) : (
-        <ul className="stack">
+        <ul className="hc-list">
           {patient.invoices.map((i) => (
-            <li key={i.id}>
-              <a href={`/portal/invoices/${i.id}`}>{isolate(i.number ?? i.posting_date)}</a> · {isolate(i.total)} ·{isolate(" ")}
-              {Number(i.outstanding) > 0 ? t("{owed} still to pay", { owed: i.outstanding }) : t("Paid")}
+            <li key={i.id} className="hc-visit">
+              <a className="hc-when hc-link" href={`/portal/invoices/${i.id}`}>
+                {isolate(i.number ?? i.posting_date)}
+              </a>
+              <span className="hc-what num-inline">{isolate(i.total)}</span>
+              <span className="hc-state">{Number(i.outstanding) > 0 ? <Badge tone="amber">{t("{owed} still to pay", { owed: i.outstanding })}</Badge> : <Badge tone="green">{t("Paid")}</Badge>}</span>
             </li>
           ))}
         </ul>

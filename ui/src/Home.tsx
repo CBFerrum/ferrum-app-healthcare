@@ -4,9 +4,8 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { Link } from "react-router";
-import { api, docPath, todayIso, t, isolate } from "@ferrum/client";
-import { Badge, EmptyState, ErrorState, ListSkeleton, statusTone, useShellTitle } from "@ferrum/kit";
+import { api, docPath, formatValue, todayIso, t, isolate } from "@ferrum/client";
+import { ButtonLink, HomeSkeleton, LoadFailed, PageHead, Queue, QueueGrid, QueueItem, StatePanel, StatusBadge } from "@ferrum/kit";
 import { APPOINTMENT_TONES } from "./patient/api";
 
 export interface Row {
@@ -20,6 +19,9 @@ const rows = (entity: string, filters: unknown[], extra: Record<string, string |
 /** The patient an appointment is for, by name (the link's title), not by id. */
 export const patientOf = (a: Row): string => String((a._titles as Record<string, string> | undefined)?.patient ?? "");
 
+/** The appointment type's name (the record's title), for the row's quiet line. */
+export const typeOf = (a: Row): string => String((a._titles as Record<string, string> | undefined)?.appointment_type ?? "");
+
 /** Appointments by practitioner id, each list in time order. */
 export function byPractitioner(list: Row[]): Map<string, Row[]> {
   const out = new Map<string, Row[]>();
@@ -30,8 +32,10 @@ export function byPractitioner(list: Row[]): Map<string, Row[]> {
   return out;
 }
 
+/** A day as the person reads it ("11 Nov 2026"). */
+const dayText = (v: string) => formatValue({ type: "date" }, v);
+
 export function Home() {
-  useShellTitle(t("Healthcare"));
   const [day, setDay] = useState(todayIso);
   const q = useQuery({
     queryKey: ["healthcare", "day", day],
@@ -44,47 +48,61 @@ export function Home() {
     },
     refetchInterval: 30_000,
   });
-  if (q.isPending) return <ListSkeleton className="np-page" />;
-  if (q.isError) return <ErrorState error={q.error} onRetry={() => void q.refetch()} />;
+  const actions = (
+    <>
+      <label className="hc-day-pick">
+        <span className="muted">{t("Day")}</span>
+        <input className="input" type="date" value={day} onChange={(e) => e.target.value && setDay(e.target.value)} />
+      </label>
+      <ButtonLink to="/e/Appointment/new" variant="primary" icon="plus">
+        {t("New appointment")}
+      </ButtonLink>
+    </>
+  );
+  if (q.isPending)
+    return (
+      <>
+        <PageHead title={t("The day")} actions={actions} />
+        <HomeSkeleton queues={2} />
+      </>
+    );
+  if (q.isError)
+    return (
+      <>
+        <PageHead title={t("The day")} actions={actions} />
+        <LoadFailed error={q.error} onRetry={() => void q.refetch()} />
+      </>
+    );
   const grouped = byPractitioner(q.data.appointments);
   return (
-    <div className="np-page">
-      <header className="row" style={{ justifyContent: "space-between" }}>
-        <h2>{t("The day")}</h2>
-        <span className="row">
-          <input className="input" type="date" value={day} onChange={(e) => setDay(e.target.value)} aria-label={t("Day")} />
-          <Link to="/e/Appointment/new">{t("New appointment")}</Link>
-        </span>
-      </header>
+    <>
+      <PageHead title={t("The day")} description={t("{day} · {n} booked", { day: dayText(day), n: q.data.appointments.length })} actions={actions} />
       {q.data.practitioners.length === 0 ? (
-        <EmptyState title={t("No practitioners yet")} icon="calendar">
-          <p className="muted">
-            {t("Add a practitioner with their fee and weekly hours, and an appointment type, and the day's appointments show here.")} <Link to="/e/Practitioner/new">{t("Add a practitioner")}</Link>
-          </p>
-        </EmptyState>
+        <StatePanel
+          kind="empty"
+          title={t("No practitioners yet")}
+          action={
+            <ButtonLink to="/e/Practitioner/new" variant="primary" icon="plus">
+              {t("Add a practitioner")}
+            </ButtonLink>
+          }
+        >
+          {t("Add a practitioner with their fee and weekly hours, and an appointment type, and the day's appointments show here.")}
+        </StatePanel>
       ) : (
-        <div className="np-columns">
-          {q.data.practitioners.map((p) => (
-            <section key={p.id} className="card card-pad stack" aria-label={String(p.practitioner_name)}>
-              <h3>{isolate(String(p.practitioner_name))}</h3>
-              {grouped.get(p.id)?.length ? (
-                <ul className="stack">
-                  {(grouped.get(p.id) ?? []).map((a) => (
-                    <li key={a.id}>
-                      <Link to={`/e/Appointment/${a.id}`}>
-                        {isolate(String(a.time))} · {isolate(patientOf(a))}
-                      </Link>{isolate(" ")}
-                      <Badge tone={statusTone(String(a.status), APPOINTMENT_TONES)}>{isolate(String(a.status))}</Badge>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="muted">{t("Nothing booked.")}</p>
-              )}
-            </section>
-          ))}
-        </div>
+        <QueueGrid className="hc-day">
+          {q.data.practitioners.map((p) => {
+            const list = grouped.get(p.id) ?? [];
+            return (
+              <Queue key={p.id} title={isolate(String(p.practitioner_name))} count={list.length} empty={t("Nothing booked.")}>
+                {list.map((a) => (
+                  <QueueItem key={a.id} to={`/e/Appointment/${a.id}`} title={`${isolate(String(a.time))} · ${isolate(patientOf(a))}`} meta={isolate(typeOf(a))} trailing={<StatusBadge value={a.status} tones={APPOINTMENT_TONES} />} />
+                ))}
+              </Queue>
+            );
+          })}
+        </QueueGrid>
       )}
-    </div>
+    </>
   );
 }
