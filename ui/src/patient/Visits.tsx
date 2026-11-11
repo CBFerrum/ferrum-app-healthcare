@@ -6,7 +6,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CalendarDays } from "lucide-react";
 import { refusal, t, isolate } from "@ferrum/client";
-import { Badge, Button, confirmDialog, HomeSkeleton, LoadFailed, PageHead, StatePanel, StatusBadge, toast } from "@ferrum/kit";
+import { Badge, Button, ButtonLink, confirmDialog, HomeSkeleton, LoadFailed, PageHead, Queue, QueueItem, StatePanel, StatusBadge, toast } from "@ferrum/kit";
 import { APPOINTMENT_TONES, cancelMine, giveConsent, inOrder, myVisits, type Patient } from "./api";
 
 export function VisitsPage() {
@@ -50,7 +50,7 @@ function PatientCard({ patient }: { patient: Patient }) {
   const agree = useMutation({ mutationFn: (form: string) => giveConsent(patient.id, form), onSuccess: () => done(t("Consent given")), onError: (e) => toast(refusal(e), "error") });
   const today = new Date().toISOString().slice(0, 10);
   return (
-    <section className="card card-pad stack" aria-label={patient.name}>
+    <section className="stack" aria-label={patient.name}>
       <h2>{isolate(patient.name)}</h2>
       {patient.consents_needed.map((c) => (
         <div key={c.form} className="card card-pad stack">
@@ -63,21 +63,17 @@ function PatientCard({ patient }: { patient: Patient }) {
           </div>
         </div>
       ))}
-      <h3>{t("Visits")}</h3>
-      {patient.visits.length === 0 ? (
-        <p className="muted">{t("No visits yet.")}</p>
-      ) : (
-        <ul className="hc-list">
-          {inOrder(patient.visits, today).map((v) => (
-            <li key={v.id} className="hc-visit">
-              <span className="hc-when">{isolate(`${v.date} ${v.time}`)}</span>
-              <span className="hc-what">{isolate([v.practitioner, v.type].filter(Boolean).join(" · "))}</span>
-              <span className="hc-state">
-                <StatusBadge value={v.status} tones={APPOINTMENT_TONES} />
-              </span>
-              {v.cancellable && (
+      <Queue title={t("Visits")} count={patient.visits.length} empty={t("No visits yet.")}>
+        {inOrder(patient.visits, today).map((v) => (
+          <QueueItem
+            key={v.id}
+            lead={isolate(v.time)}
+            title={isolate(v.practitioner ?? "")}
+            meta={isolate([v.date, v.type].filter(Boolean).join(" · "))}
+            trailing={<StatusBadge value={v.status} tones={APPOINTMENT_TONES} />}
+            action={
+              v.cancellable ? (
                 <Button
-                  className="hc-act"
                   loading={off.isPending && off.variables === v.id}
                   onClick={async () => {
                     if (await confirmDialog({ title: t("Cancel this visit?"), message: t("Its time is given up."), confirmLabel: t("Cancel it") })) off.mutate(v.id);
@@ -85,27 +81,22 @@ function PatientCard({ patient }: { patient: Patient }) {
                 >
                   {t("Cancel")}
                 </Button>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
-      <h3>{t("Invoices")}</h3>
-      {patient.invoices.length === 0 ? (
-        <p className="muted">{t("No invoices yet.")}</p>
-      ) : (
-        <ul className="hc-list">
-          {patient.invoices.map((i) => (
-            <li key={i.id} className="hc-visit">
-              <a className="hc-when hc-link" href={`/portal/invoices/${i.id}`}>
-                {isolate(i.number ?? i.posting_date)}
-              </a>
-              <span className="hc-what num-inline">{isolate(i.total)}</span>
-              <span className="hc-state">{Number(i.outstanding) > 0 ? <Badge tone="amber">{t("{owed} still to pay", { owed: i.outstanding })}</Badge> : <Badge tone="green">{t("Paid")}</Badge>}</span>
-            </li>
-          ))}
-        </ul>
-      )}
+              ) : undefined
+            }
+          />
+        ))}
+      </Queue>
+      <Queue title={t("Invoices")} count={patient.invoices.length} empty={t("No invoices yet.")}>
+        {patient.invoices.map((i) => (
+          <QueueItem
+            key={i.id}
+            title={isolate(i.number ?? i.posting_date)}
+            meta={isolate(i.total)}
+            trailing={Number(i.outstanding) > 0 ? <Badge tone="amber">{t("{owed} still to pay", { owed: i.outstanding })}</Badge> : <Badge tone="green">{t("Paid")}</Badge>}
+            action={<ButtonLink href={`/portal/invoices/${i.id}`}>{t("Open")}</ButtonLink>}
+          />
+        ))}
+      </Queue>
     </section>
   );
 }

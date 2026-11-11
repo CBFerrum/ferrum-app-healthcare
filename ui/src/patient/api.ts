@@ -4,9 +4,10 @@
 // their visits, invoices and the consents their coming visits need. The server holds every rule.
 
 import { api } from "@ferrum/client";
+import type { Tone } from "@ferrum/kit";
 
 /** Appointment.status as stored (packages/healthcare/entities), for `statusTone`. */
-export const APPOINTMENT_TONES = { Scheduled: "blue", "Checked In": "amber", Completed: "green", Cancelled: "neutral", "No Show": "red" } as const;
+export const APPOINTMENT_TONES: Readonly<Record<string, Tone>> = { Scheduled: "blue", "Checked In": "amber", Completed: "green", Cancelled: "neutral", "No Show": "red" };
 
 export interface Options {
   practitioners: { id: string; name: string; department: string | null }[];

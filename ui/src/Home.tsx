@@ -90,13 +90,13 @@ export function Home() {
           {t("Add a practitioner with their fee and weekly hours, and an appointment type, and the day's appointments show here.")}
         </StatePanel>
       ) : (
-        <QueueGrid className="hc-day">
+        <QueueGrid>
           {q.data.practitioners.map((p) => {
             const list = grouped.get(p.id) ?? [];
             return (
               <Queue key={p.id} title={isolate(String(p.practitioner_name))} count={list.length} empty={t("Nothing booked.")}>
                 {list.map((a) => (
-                  <QueueItem key={a.id} to={`/e/Appointment/${a.id}`} title={`${isolate(String(a.time))} · ${isolate(patientOf(a))}`} meta={isolate(typeOf(a))} trailing={<StatusBadge value={a.status} tones={APPOINTMENT_TONES} />} />
+                  <QueueItem key={a.id} to={`/e/Appointment/${a.id}`} lead={isolate(String(a.time))} title={isolate(patientOf(a))} meta={isolate(typeOf(a))} trailing={<StatusBadge value={a.status} tones={APPOINTMENT_TONES} />} />
                 ))}
               </Queue>
             );
