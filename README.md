@@ -74,6 +74,7 @@ cd ui && npm run build && npm run check
 
 | Version | Highlights |
 |---|---|
+| **0.3.2** | Rebuilt on the tuned design system: better menu icons, a lighter first page, a visible scroll cue, cleaner print. |
 | **0.3.1** | The redesigned interface: the upgraded design system, shaped loading, told-apart states. |
 | **0.3.0** | The Patient Portal role: the patients' portal as configuration; cancelling from outside held to the clinic's window. |
 | **0.2.0** | Booking online, reminders, the patients' portal, insurers' shares claimed (FEO-048). |
