@@ -7,7 +7,7 @@
 
 <br>
 
-[![Version](https://img.shields.io/badge/version-0.3.2-0e7490?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.3.4-0e7490?style=flat-square)](CHANGELOG.md)
 [![Licence: AGPL-3.0](https://img.shields.io/badge/licence-AGPL--3.0-blue?style=flat-square)](LICENSE)
 [![Ferrum platform](https://img.shields.io/badge/runs%20on-Ferrum-2f5bea?style=flat-square)](https://github.com/CBFerrum/Ferrum)
 ![Rust](https://img.shields.io/badge/Rust-server-b7410e?style=flat-square&logo=rust)
@@ -362,6 +362,7 @@ Whether a clinic meets health-data law depends on how it is run, not on the soft
 
 ### ✅ Recently shipped
 
+- [x] **0.3.4** The patients' pages count days on the clinic's calendar; rebuilt on Ferrum-Frontend 06bd1a2 with `mountApp`.
 - [x] **0.3.2** Tuned design system: better menu icons, lighter first page, cleaner print.
 - [x] **0.3.1** The redesigned interface with shaped loading and told-apart states.
 - [x] **0.3.0** The Patient Portal role as configuration; online cancellation held to the clinic's window.
