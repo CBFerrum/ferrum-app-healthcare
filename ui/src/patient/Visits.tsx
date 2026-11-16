@@ -48,7 +48,6 @@ function PatientCard({ patient }: { patient: Patient }) {
   };
   const off = useMutation({ mutationFn: (visit: string) => cancelMine(visit), onSuccess: () => done(t("The visit is cancelled")), onError: (e) => toast(refusal(e), "error") });
   const agree = useMutation({ mutationFn: (form: string) => giveConsent(patient.id, form), onSuccess: () => done(t("Consent given")), onError: (e) => toast(refusal(e), "error") });
-  const today = new Date().toISOString().slice(0, 10);
   return (
     <section className="stack" aria-label={patient.name}>
       <h2>{isolate(patient.name)}</h2>
@@ -64,7 +63,7 @@ function PatientCard({ patient }: { patient: Patient }) {
         </div>
       ))}
       <Queue title={t("Visits")} count={patient.visits.length} empty={t("No visits yet.")}>
-        {inOrder(patient.visits, today).map((v) => (
+        {inOrder(patient.visits).map((v) => (
           <QueueItem
             key={v.id}
             lead={isolate(v.time)}
