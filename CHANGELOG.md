@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.3
+
+A patient's customer is ERP's to find or make (`portal::customer_for`, ERP 0.28.3), the one way every app that bills a person has; Healthcare's own copy, which always made one, is gone. Needs ERP 0.28.3 (`requires: {erp: ">=0.28.3"}`).
+
+- **A patient who already is a customer is billed to that customer.** The first time a patient is billed, the customer their own email names (the oldest; never a disabled one, a web shop's guest or a company whose contact has the address) is theirs and kept on the patient; only without one is a customer made from them. Before, a customer was always made, so someone ERP already knew had two.
+- Two patients with one email, a parent's for two children say, are billed to one customer, the first's.
+- A patient without an email gets a customer of their own, as before; their mobile number is not used to find one.
+
 ## 0.3.2
 
 Rebuilt with Ferrum-Frontend 9e7190c, the design system as tuned after the landed build was reviewed. The left menu's icons are chosen so that none repeats on more than three rows and each fits its row; their drawings load beside the first page instead of inside it, so the page starts lighter; a row that scrolls sideways fades at the edge where there is more, in every browser and with reduced motion; a printed record leaves out empty fields and keeps its totals with the table; menus and popovers sit inside the page's landmarks for assistive technology; a selection bar folds what does not fit into More on a narrow screen. Nothing else changes.

@@ -262,6 +262,15 @@ async fn scenario() {
     t.act(&desk, "Appointment", next_month, "check_in").await.unwrap();
     assert!(t.act(&omar_u, "Appointment", next_month, "complete").await.unwrap()["sales_invoice"].is_object());
     assert_eq!(t.get("Patient", ben).await["customer"], ben_customer, "one customer a patient, however often billed");
+    // A patient who already is a customer, by their own email, is billed to that customer, kept on
+    // them; no second one is made.
+    let dev_customer = t.insert(&a, "Customer", json!({"customer_name": "Dev Kumar", "customer_type": "Individual", "email": "dev@home.test"})).await;
+    let dev = uid(&t.insert(&desk, "Patient", json!({"patient_name": "Dev Kumar", "email": "dev@home.test"})).await["id"]);
+    let dev_visit = uid(&t.k.insert(&desk, "Appointment", book(dev, omar, general, "2026-12-07", "10:00")).await.unwrap()["id"]);
+    t.act(&desk, "Appointment", dev_visit, "check_in").await.unwrap();
+    let billed = t.act(&omar_u, "Appointment", dev_visit, "complete").await.unwrap();
+    assert_eq!(t.get("SalesInvoice", uid(&billed["sales_invoice"]["id"])).await["customer"], dev_customer["id"], "billed to the customer he already is");
+    assert_eq!(t.get("Patient", dev).await["customer"], dev_customer["id"]);
     // Missed only once it was due: a visit still to come is refused, one gone by is marked.
     let ahead = uid(&t.k.insert(&desk, "Appointment", book(ben, mira, general, "2030-11-04", "09:20")).await.unwrap()["id"]);
     refused(t.act(&desk, "Appointment", ahead, "no_show").await, "invalid", "has not begun yet: it is at 09:20 on 2030-11-04");
