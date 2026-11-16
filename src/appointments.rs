@@ -2,7 +2,7 @@
 //! practitioner's hours on that weekday, and clashes with neither the practitioner's nor the
 //! patient's other visits that are still to come or under way. A patient is checked in only with
 //! the consent the visit's type needs. Completing a visit bills the practitioner's fee through ERP
-//! to the patient's customer, made from the patient when first billed, and opens a fee validity:
+//! to the patient's customer, ERP's for them when first billed, and opens a fee validity:
 //! the next visits with that practitioner within the settings' days are follow-ups, covered and not
 //! billed, as many as the settings say (ERPNext 12's Fee Validity).
 
@@ -10,6 +10,7 @@ use crate::consent::consented;
 use crate::{minutes, obj};
 use async_trait::async_trait;
 use chrono::{Datelike, Duration, NaiveDate, Timelike};
+use ferrum_app_erp::portal::customer_for;
 use ferrum_domain::flow::created;
 use ferrum_domain::util::{d, elevated, id, money, round, rows, s, sys};
 use ferrum_kernel::{Ctx, Doc, DocHook, Error, HookCtx, Kernel, Result, Tx};
@@ -326,16 +327,14 @@ async fn bill(k: &Kernel, ctx: &Ctx, tx: &mut Tx, doc: &Doc) -> Result<Value> {
     Ok(out)
 }
 
-/// The customer a patient is billed to: theirs, or one made from them now.
+/// The customer a patient is billed to: theirs, else ERP's for them (the one their own email names,
+/// never a namesake's, or one made from them now), kept on the patient.
 pub(crate) async fn customer_of(k: &Kernel, ctx: &Ctx, tx: &mut Tx, patient: Uuid) -> Result<Uuid> {
     let p = k.get_tx(ctx, tx, "Patient", patient, true).await?;
     if let Some(c) = id(&p, "customer") {
         return Ok(c);
     }
-    // Their own, never a namesake's.
-    let name = s(&p, "patient_name").unwrap_or("Patient");
-    let made = k.insert_tx(ctx, tx, "Customer", obj(json!({"customer_name": name, "customer_type": "Individual", "email": s(&p, "email")}))).await?;
-    let c = id(&made, "id").ok_or_else(|| Error::internal("a customer without an id"))?;
+    let (c, _) = customer_for(k, ctx, tx, s(&p, "patient_name").unwrap_or("Patient"), s(&p, "email"), None).await?;
     k.set_values_tx(ctx, tx, "Patient", patient, obj(json!({"customer": c.to_string()}))).await?;
     Ok(c)
 }

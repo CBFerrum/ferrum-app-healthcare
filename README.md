@@ -52,7 +52,7 @@ insurers' shares claimed. It is for small and medium clinics that want a front d
 | **Version** | 0.3.2 |
 | **Kind** | Its own interface at `/healthcare/` (the day by practitioner, public booking page, patients' portal pages), with every record in Ferrum's lists and forms |
 | **What it adds** | 10 record types (8 documents, 1 child table, 1 settings record), 4 roles (one for the portal), 1 menu |
-| **Depends on** | Ferrum platform `>=0.3.2, <0.4`; ERP `>=0.1` (installing Healthcare installs ERP) |
+| **Depends on** | Ferrum platform `>=0.3.2, <0.4`; ERP `>=0.28.3` (installing Healthcare installs ERP) |
 | **Works with** | ERP (customers, items, companies, sales invoices, credit notes) |
 | **Languages** | English, Arabic, Hindi (words and record names); right-to-left layout |
 | **Tests** | 3 Rust tests (one walks a week at a clinic on PostgreSQL) and a UI suite |
@@ -119,8 +119,9 @@ insurers' shares claimed. It is for small and medium clinics that want a front d
   Inactive*) and where they came from (*Clinic* or *Online*).
 - **Insurance on the patient.** An insurer (an ERP customer), a policy number and the insurer's share as a percentage.
 - **Allergies** are kept in a clinical field group.
-- **Billed to their own customer.** The first time a patient is billed, ERP gets a customer made from them. A
-  namesake's customer is never reused.
+- **Billed to their own customer.** The first time a patient is billed, they are billed to the customer their own email
+  already names in ERP, or to one made from them, and it is kept on the patient. A disabled customer, a web shop's
+  guest and a namesake's customer are never reused.
 - **Inactive patients** cannot be booked.
 - **Known by email.** Online bookings and the portal find a patient by their email address, and a new patient is made
   when the address is not known.
