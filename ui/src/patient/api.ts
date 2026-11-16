@@ -3,7 +3,7 @@
 // the portal (`/api/app/healthcare/portal/…`): the patients known by the person's address, with
 // their visits, invoices and the consents their coming visits need. The server holds every rule.
 
-import { api } from "@ferrum/client";
+import { api, todayIso } from "@ferrum/client";
 import type { Tone } from "@ferrum/kit";
 
 /** Appointment.status as stored (packages/healthcare/entities), for `statusTone`. */
@@ -58,8 +58,15 @@ export const giveConsent = (patient: string, form: string) => api.post<{ message
 /** The page of a visit booked online, under the booking page. */
 export const visitLink = (tenant: string, token: string) => `/book/${encodeURIComponent(tenant)}/visit/${encodeURIComponent(token)}`;
 
-/** Visits still to come first, soonest first; then the rest, latest first. */
-export function inOrder(visits: Visit[], today: string): Visit[] {
+/** The day after the workspace's today (its visits' calendar), the booking page's first day. */
+export function tomorrow(): string {
+  const d = new Date(`${todayIso()}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + 1);
+  return d.toISOString().slice(0, 10);
+}
+
+/** Visits still to come (from the workspace's today) first, soonest first; then the rest, latest first. */
+export function inOrder(visits: Visit[], today = todayIso()): Visit[] {
   const ahead = visits.filter((v) => v.status === "Scheduled" && v.date >= today).sort((a, b) => `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`));
   const rest = visits.filter((v) => !ahead.includes(v)).sort((a, b) => `${b.date} ${b.time}`.localeCompare(`${a.date} ${a.time}`));
   return [...ahead, ...rest];

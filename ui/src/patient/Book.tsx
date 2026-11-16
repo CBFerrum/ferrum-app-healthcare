@@ -8,7 +8,7 @@ import { useParams } from "react-router";
 import { ApiError, bootstrap, refusal, t, isolate } from "@ferrum/client";
 import { CalendarDays } from "lucide-react";
 import { Alert, ButtonLink, Button, confirmDialog, Field, FormSkeleton, LoadFailed, PageHead, StatePanel, StatusBadge } from "@ferrum/kit";
-import { APPOINTMENT_TONES, book, type Booked, cancelByLink, freeTimes, options, visitByLink, visitLink } from "./api";
+import { APPOINTMENT_TONES, book, type Booked, cancelByLink, freeTimes, options, tomorrow, visitByLink, visitLink } from "./api";
 
 function Page({ children }: { children: React.ReactNode }) {
   return (
@@ -27,12 +27,6 @@ function Page({ children }: { children: React.ReactNode }) {
 }
 
 const closed = (error: unknown) => error instanceof ApiError && error.status === 404;
-
-function tomorrow(): string {
-  const d = new Date();
-  d.setDate(d.getDate() + 1);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
 
 export function BookPage() {
   const { tenant = "" } = useParams();
