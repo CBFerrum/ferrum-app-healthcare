@@ -15,7 +15,7 @@
 ![React](https://img.shields.io/badge/React%20%2B%20TypeScript-interface-087ea4?style=flat-square&logo=react&logoColor=white)
 ![Tests](https://img.shields.io/badge/tests-3%20Rust%20%2B%20UI%20suite-16a34a?style=flat-square)
 
-### Appointments that cannot clash, consent that is versioned, and visits billed in your own books.
+### Appointments checked for clashes, consent that is versioned, and visits billed in your own books.
 
 Ferrum Healthcare is the administrative side of a clinic: patients, practitioners and their hours, appointments booked
 at the desk or online, consent forms, reminders, a patient portal, and visits billed through Ferrum ERP with
@@ -32,8 +32,8 @@ insurers' shares claimed. It is for small and medium clinics that want a front d
 
 ## 💡 Why Healthcare
 
-- 🕒 **Hours and clashes are enforced.** A visit must fall within its practitioner's hours that weekday and clash with
-  neither the practitioner's nor the patient's other visits.
+- 🕒 **Hours and clashes are checked.** A visit must fall within its practitioner's hours that weekday and clash with
+  neither the practitioner's nor the patient's other visits when it is saved.
 - 📝 **Consent follows the text.** Change a consent form's text and it becomes a new version, so every patient
   consents again. A patient is checked in only with a current consent, and consent can be withdrawn.
 - 🧾 **Billing in the same books.** Completing a visit raises a draft invoice in ERP; follow-ups inside a paid visit's
@@ -49,7 +49,7 @@ insurers' shares claimed. It is for small and medium clinics that want a front d
 
 | | |
 |---|---|
-| **Version** | 0.3.2 |
+| **Version** | 0.3.4 |
 | **Kind** | Its own interface at `/healthcare/` (the day by practitioner, public booking page, patients' portal pages), with every record in Ferrum's lists and forms |
 | **What it adds** | 10 record types (8 documents, 1 child table, 1 settings record), 4 roles (one for the portal), 1 menu |
 | **Depends on** | Ferrum platform `>=0.3.2, <0.4`; ERP `>=0.28.3` (installing Healthcare installs ERP) |
@@ -119,15 +119,17 @@ insurers' shares claimed. It is for small and medium clinics that want a front d
   Inactive*) and where they came from (*Clinic* or *Online*).
 - **Insurance on the patient.** An insurer (an ERP customer), a policy number and the insurer's share as a percentage.
 - **Allergies** are kept in a clinical field group.
-- **Billed to their own customer.** The first time a patient is billed, they are billed to the customer their own email
-  already names in ERP, or to one made from them, and it is kept on the patient. A disabled customer, a web shop's
-  guest and a namesake's customer are never reused.
+- **Billed to their own customer.** The first time a patient is billed, ERP finds or makes the customer: the one their
+  own email already names, or one made from them, and it is kept on the patient. A disabled customer, a web shop's
+  guest and a namesake's customer are never reused. Two patients with one email (a parent's, for two children) are
+  billed to one customer; a patient without an email gets a customer of their own.
 - **Inactive patients** cannot be booked.
 - **Known by email.** Online bookings and the portal find a patient by their email address, and a new patient is made
   when the address is not known.
 - **Personal-data requests.** The platform's access and erasure requests find patients by email, mobile or name and
-  their appointments through them. Medical records are kept as the retention note says; billing and consent
-  evidence likewise.
+  their appointments through them. Patients and their appointments are declared as kept, not erased, with a retention
+  note that names health law; the app does not know what any law requires, so the clinic decides how long to keep them.
+  Billing records and consent evidence are declared as kept too.
 
 ### 👩‍⚕️ Practitioners and hours
 
@@ -143,8 +145,8 @@ insurers' shares claimed. It is for small and medium clinics that want a front d
 - **Types of visit.** An appointment type has a name, minutes, whether it is booked online, and an optional consent form.
 - **Booked within hours.** A visit lasts its type's minutes unless it says otherwise, must fall inside the
   practitioner's hours that weekday, and must end the day it starts.
-- **No clashes.** It cannot overlap the practitioner's or the patient's other visits that are scheduled or checked in. A
-  completed or cancelled visit frees its time.
+- **No clashes.** Saving a visit is refused when it overlaps the practitioner's or the patient's other visits that are
+  scheduled or checked in. A completed or cancelled visit frees its time.
 - **A life of five states.** *Scheduled, Checked In, Completed, Cancelled, No Show.* Check In, Complete the Visit, Cancel
   It and Did Not Come are buttons that show only when they apply.
 - **Checked in with consent.** If the type needs a consent form, the patient must have given, and not withdrawn, consent
@@ -243,7 +245,7 @@ flowchart LR
   CO --> CL["Insurance claim to the insurer"]
 ```
 
-A visit is booked within hours and without clashes, checked in with consent, and completed by its practitioner.
+A visit is booked within hours and without clashes at the time it is saved, checked in with consent, and completed by its practitioner.
 Completing it bills the patient, opens a follow-up cover, and claims the insurer's share when there is one.
 
 ```mermaid
@@ -300,7 +302,7 @@ honestly red.
 |---|:-:|:-:|:-:|:-:|:-:|:-:|
 | Patient registry with contact and insurance details | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Practitioner weekly hours and schedule | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Appointments that cannot clash | ✅ | ✅ | ✅ | ✅ | 🟡 | ✅ |
+| Overlapping appointments refused for practitioner and patient | ✅ | ✅ | ✅ | ✅ | 🟡 | ✅ |
 | Appointment states: check in, complete, cancel, no show | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Booking online with free times | ✅ | ✅ | ✅ | ✅ | 🟡 | 🟡 |
 | Patient portal with visits, invoices and consents | ✅ | ✅ | ✅ | ✅ | ✅ | 🟡 |
@@ -341,7 +343,7 @@ Whether a clinic meets health-data law depends on how it is run, not on the soft
 - 🧾 **The books are the books.** A visit is an invoice in ERP, beside stock, buying and the ledger. The clinical
   systems send billing elsewhere, or are a billing system of their own.
 - 📝 **Consent that follows the wording.** Versioned forms, a check at check-in, and withdrawal that is kept.
-- 🕒 **Clashes are refused by the server,** for the patient as well as the practitioner, however a visit is booked.
+- 🕒 **Clashes are refused by the server when a visit is saved,** for the patient as well as the practitioner, however it is booked.
 - 🔐 **Field groups.** Personal and clinical details are separate grants, and the assistant honours them.
 - 🌐 **Booking and portal as configuration.** The patient portal is a role, not a separate product.
 - 🔓 **Open and owned.** AGPL, no per-seat or per-visit fee.
@@ -363,6 +365,7 @@ Whether a clinic meets health-data law depends on how it is run, not on the soft
 ### ✅ Recently shipped
 
 - [x] **0.3.4** The patients' pages count days on the clinic's calendar; rebuilt on Ferrum-Frontend 06bd1a2 with `mountApp`.
+- [x] **0.3.3** A patient's customer is found or made through ERP's portal functions, so a patient ERP already knows is not given a second customer.
 - [x] **0.3.2** Tuned design system: better menu icons, lighter first page, cleaner print.
 - [x] **0.3.1** The redesigned interface with shaped loading and told-apart states.
 - [x] **0.3.0** The Patient Portal role as configuration; online cancellation held to the clinic's window.

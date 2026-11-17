@@ -13,7 +13,4 @@
   - Fee Validity: a billed visit covering follow-ups with the same practitioner for some days and
     some visits, set in Healthcare Settings.
 - Its own: consent forms with versions and patients' consents, check-in only with consent,
-  completing only by the visit's practitioner, the customer made from the patient, and all the code.
-
-The copy read is in `ERP/referance/industry/erpnext-v12` on the machine this was written on (sparse:
-`erpnext/healthcare`, `erpnext/hotels` and `erpnext/restaurant`).
+  completing only by the visit's practitioner, the patient's customer found or made through ERP, and all the code.
