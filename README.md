@@ -119,6 +119,13 @@ insurers' shares claimed. It is for small and medium clinics that want a front d
   Inactive*) and where they came from (*Clinic* or *Online*).
 - **Insurance on the patient.** An insurer (an ERP customer), a policy number and the insurer's share as a percentage.
 - **Allergies** are kept in a clinical field group.
+- **Who opened a record is recorded.** Opening a patient, an appointment, a consent or an insurance claim writes an
+  entry (who, when, which record, never a field's value) to the workspace's audit trail, category `access`, with
+  nothing to set up. Lists and searches are not recorded by default, so a front desk scrolling the day's list does
+  not flood the trail. A workspace's `record_reads` setting wins over this: `{"Patient": "all"}` records lists,
+  searches, reports and exports too, and `{"Patient": "off"}` stops it for that record. A patient reading their own
+  record through the Patient Portal role is recorded like anyone's; the app's own *Your visits* page reads by its own
+  queries and is not.
 - **Billed to their own customer.** The first time a patient is billed, ERP finds or makes the customer: the one their
   own email already names, or one made from them, and it is kept on the patient. A disabled customer, a web shop's
   guest and a namesake's customer are never reused. Two patients with one email (a parent's, for two children) are
@@ -356,7 +363,7 @@ Whether a clinic meets health-data law depends on how it is run, not on the soft
 - 📡 **Standards.** FHIR, HL7, electronic claims and eligibility.
 - 📲 **Reach.** SMS and WhatsApp reminders, native apps and video visits.
 - 📋 **Scheduling depth.** Leave, rooms, recurring visits, waitlists and recall.
-- 🔎 **Read audit.** A log of who opened a record.
+- 🔎 **Read audit depth.** Who opened a record is logged; break-glass access and alerts on unusual reads are not.
 
 > [!NOTE]
 > Leader columns are from public product information as of November 2026 and may change. Product names belong to
@@ -390,7 +397,8 @@ Whether a clinic meets health-data law depends on how it is run, not on the soft
 - [ ] Reports: collections, no-show rate, practitioner load and receivables by insurer.
 
 **Trust**
-- [ ] A log of who opened a patient record, with break-glass access.
+- [x] **0.3.6** A log of who opened a patient record, appointment, consent or claim, on by default.
+- [ ] Break-glass access to a patient record.
 - [ ] Intake forms before the visit and signed consent.
 
 ### 🔭 Later
