@@ -21,6 +21,7 @@
   label_plural: Patients
   kind: master
   module: healthcare
+  record_reads: open
   title_field: patient_name
   fields:
     - {name: patient_name, type: data, required: true, in_list: true}
@@ -93,6 +94,7 @@
   label_plural: Patient Consents
   kind: master
   module: healthcare
+  record_reads: open
   title_field: consent_form
   description: A patient's consent to one version of a form, given and perhaps withdrawn.
   fields:
@@ -112,6 +114,7 @@
   label_plural: Appointments
   kind: master
   module: healthcare
+  record_reads: open
   title_field: patient
   description: A patient seen by a practitioner, within their hours and clashing with neither's other appointments.
   fields:
@@ -159,6 +162,7 @@
   label_plural: Insurance Claims
   kind: master
   module: healthcare
+  record_reads: open
   title_field: insurer
   description: "An insurer's share of a visit, billed to them through ERP when the visit is completed. Paid once its invoice is settled; rejected, the patient is billed the share instead and the insurer credited."
   fields:

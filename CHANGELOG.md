@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.6
+
+Needs the platform's declared read recording (`record_reads` in an entity's definition). No database change.
+
+- **Who opened a patient's records is recorded by default.** Patient, Appointment, PatientConsent and InsuranceClaim
+  declare `record_reads: open`: each record opened writes an `access` entry to the audit trail on every workspace that
+  has not set its own value for that entity. Before, nothing was recorded unless an administrator found the workspace's
+  `record_reads` setting. Lists are not recorded (`all` would flood the trail for a front desk); a workspace's own
+  setting wins, `off` included, and `all` adds lists, searches, reports and exports. FeeValidity, Practitioner,
+  AppointmentType, ConsentForm and the settings hold no patient's details and declare nothing.
+
 ## 0.3.5
 
 Needs the same platform as 0.3.4. A database change: two exclusion constraints on appointments (package SQL
