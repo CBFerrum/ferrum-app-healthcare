@@ -7,13 +7,13 @@
 
 <br>
 
-[![Version](https://img.shields.io/badge/version-0.3.4-0e7490?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.3.5-0e7490?style=flat-square)](CHANGELOG.md)
 [![Licence: AGPL-3.0](https://img.shields.io/badge/licence-AGPL--3.0-blue?style=flat-square)](LICENSE)
 [![Ferrum platform](https://img.shields.io/badge/runs%20on-Ferrum-2f5bea?style=flat-square)](https://github.com/CBFerrum/Ferrum)
 ![Rust](https://img.shields.io/badge/Rust-server-b7410e?style=flat-square&logo=rust)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-data-336791?style=flat-square&logo=postgresql&logoColor=white)
 ![React](https://img.shields.io/badge/React%20%2B%20TypeScript-interface-087ea4?style=flat-square&logo=react&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-3%20Rust%20%2B%20UI%20suite-16a34a?style=flat-square)
+![Tests](https://img.shields.io/badge/tests-5%20Rust%20%2B%20UI%20suite-16a34a?style=flat-square)
 
 ### Appointments checked for clashes, consent that is versioned, and visits billed in your own books.
 
@@ -49,13 +49,13 @@ insurers' shares claimed. It is for small and medium clinics that want a front d
 
 | | |
 |---|---|
-| **Version** | 0.3.4 |
+| **Version** | 0.3.5 |
 | **Kind** | Its own interface at `/healthcare/` (the day by practitioner, public booking page, patients' portal pages), with every record in Ferrum's lists and forms |
 | **What it adds** | 10 record types (8 documents, 1 child table, 1 settings record), 4 roles (one for the portal), 1 menu |
 | **Depends on** | Ferrum platform `>=0.3.2, <0.4`; ERP `>=0.28.3` (installing Healthcare installs ERP) |
 | **Works with** | ERP (customers, items, companies, sales invoices, credit notes) |
 | **Languages** | English, Arabic, Hindi (words and record names); right-to-left layout |
-| **Tests** | 3 Rust tests (one walks a week at a clinic on PostgreSQL) and a UI suite |
+| **Tests** | 5 Rust tests (one walks a week at a clinic on PostgreSQL, two book a time fifty times at once) and a UI suite |
 | **Licence** | AGPL-3.0-only |
 
 ## 📸 Screenshots
@@ -146,7 +146,9 @@ insurers' shares claimed. It is for small and medium clinics that want a front d
 - **Booked within hours.** A visit lasts its type's minutes unless it says otherwise, must fall inside the
   practitioner's hours that weekday, and must end the day it starts.
 - **No clashes.** Saving a visit is refused when it overlaps the practitioner's or the patient's other visits that are
-  scheduled or checked in. A completed or cancelled visit frees its time.
+  scheduled or checked in. A completed or cancelled visit frees its time. Bookings of one practitioner or one patient
+  take turns, so of two that arrive at once one is kept and the other is told at once the time is taken; the database
+  holds the same rule for anything that writes visits another way.
 - **A life of five states.** *Scheduled, Checked In, Completed, Cancelled, No Show.* Check In, Complete the Visit, Cancel
   It and Did Not Come are buttons that show only when they apply.
 - **Checked in with consent.** If the type needs a consent form, the patient must have given, and not withdrawn, consent
@@ -343,7 +345,7 @@ Whether a clinic meets health-data law depends on how it is run, not on the soft
 - 🧾 **The books are the books.** A visit is an invoice in ERP, beside stock, buying and the ledger. The clinical
   systems send billing elsewhere, or are a billing system of their own.
 - 📝 **Consent that follows the wording.** Versioned forms, a check at check-in, and withdrawal that is kept.
-- 🕒 **Clashes are refused by the server when a visit is saved,** for the patient as well as the practitioner, however it is booked.
+- 🕒 **Clashes are refused by the database,** for the patient as well as the practitioner, however it is booked and however many ask at once.
 - 🔐 **Field groups.** Personal and clinical details are separate grants, and the assistant honours them.
 - 🌐 **Booking and portal as configuration.** The patient portal is a role, not a separate product.
 - 🔓 **Open and owned.** AGPL, no per-seat or per-visit fee.
@@ -364,6 +366,7 @@ Whether a clinic meets health-data law depends on how it is run, not on the soft
 
 ### ✅ Recently shipped
 
+- [x] **0.3.5** One time, one visit: the database refuses an overlap, so bookings that arrive together cannot both be kept.
 - [x] **0.3.4** The patients' pages count days on the clinic's calendar; rebuilt on Ferrum-Frontend 06bd1a2 with `mountApp`.
 - [x] **0.3.3** A patient's customer is found or made through ERP's portal functions, so a patient ERP already knows is not given a second customer.
 - [x] **0.3.2** Tuned design system: better menu icons, lighter first page, cleaner print.
@@ -435,6 +438,10 @@ FERRUM_HEALTHCARE_TEST_DATABASE_URL=postgres://ferrum:ferrum@localhost:5432/ferr
 The database must exist, be owned by a role that is not a superuser (superusers bypass row-level security) and be reset
 before the run. `tests/healthcare_it.rs` walks a week at a clinic: hours and clashes; consent given, withdrawn and asked
 again for a new version; visits completed and billed, and follow-ups covered then billed again; and who may do what.
+`tests/double_booking_it.rs` books one practitioner's time fifty times at once online, and one patient with fifty
+practitioners at once at the desk, each on its own connection: one visit is kept each time. Its first test lets them go
+together and shows a visit written past the app refused by the database; its second holds them until all fifty wait and
+expects every other one refused at once, naming the visit kept.
 Rust dependencies come from the Ferrum platform and Ferrum ERP repositories on `main`.
 
 The interface lives in `ui/` and is built with Ferrum-Frontend. Check the Frontend out beside the repository as
@@ -454,7 +461,7 @@ CI (`.github/workflows/ci.yml`) runs Rust on PostgreSQL 17 and the interface che
 
 ```text
 app.yaml                  manifest: id, roles, shell entries, public and portal pages, assistant notes
-packages/healthcare/      entities, roles, field groups and personal-data declarations as YAML
+packages/healthcare/      entities, roles, field groups and personal-data declarations as YAML; sql/ the database's guard against double booking
 src/appointments.rs       hours, clashes, check-in, completing and billing, fee validity
 src/consent.rs            consent forms, versions, patient consents
 src/claims.rs             insurance claims, paid and rejected
@@ -462,6 +469,7 @@ src/reminders.rs          upkeep: reminders and paid claims
 src/site.rs               public booking and the patient's portal endpoints
 ui/                       the day, the booking page, the patient's visits; words in Arabic and Hindi
 tests/healthcare_it.rs    a week at a clinic on PostgreSQL
+tests/double_booking_it.rs one time booked fifty times at once
 docs/PROVENANCE.md        where the design comes from
 ```
 

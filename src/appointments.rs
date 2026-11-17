@@ -96,11 +96,17 @@ impl DocHook for AppointmentHook {
         if end > 24 * 60 {
             return Err(Error::field("duration", "a visit ends the day it starts"));
         }
+        if end < start {
+            return Err(Error::field("duration", "a visit does not end before it starts"));
+        }
         let system = sys(hc.ctx);
-        let practitioner = hc
-            .kernel
-            .get_tx(&system, hc.tx, "Practitioner", id(doc, "practitioner").ok_or_else(|| Error::field("practitioner", "is required"))?, false)
-            .await?;
+        let who = id(doc, "practitioner").ok_or_else(|| Error::field("practitioner", "is required"))?;
+        // Bookings of one practitioner, then of one patient, take turns from here to the end of the
+        // transaction (always in that order), so that each sees the one before it and is refused by
+        // name below. The database refuses the same overlap by itself for any writer that does not
+        // pass here (packages/healthcare/sql/001_healthcare.sql).
+        sqlx::query("select 1 from e_practitioner where tenant_id = $1 and id = $2 for no key update").bind(tenant).bind(who).execute(&mut **hc.tx).await?;
+        let practitioner = hc.kernel.get_tx(&system, hc.tx, "Practitioner", who, false).await?;
         let name = s(&practitioner, "practitioner_name").unwrap_or("The practitioner").to_string();
         if practitioner.get("active").and_then(Value::as_bool) == Some(false) {
             return Err(Error::field("practitioner", format!("{name} is not seeing patients")));
@@ -114,7 +120,7 @@ impl DocHook for AppointmentHook {
         if !within {
             return Err(Error::field("time", format!("{name} does not see patients on {weekday}s from {} to {}", hhmm(start), hhmm(end))));
         }
-        let patient: Option<String> = sqlx::query_scalar("select status from e_patient where tenant_id = $1 and id = $2")
+        let patient: Option<String> = sqlx::query_scalar("select status from e_patient where tenant_id = $1 and id = $2 for no key update")
             .bind(tenant)
             .bind(id(doc, "patient"))
             .fetch_optional(&mut **hc.tx)
@@ -123,9 +129,10 @@ impl DocHook for AppointmentHook {
         if patient.as_deref() == Some("Inactive") {
             return Err(Error::field("patient", "is inactive"));
         }
+        // The other visit, to name it.
         let clash: Option<(Option<String>, bool)> = sqlx::query_as(
             "select number, practitioner = $3 from e_appointment where tenant_id = $1 and \"date\" = $2 and id <> $5 \
-             and status in ('Scheduled', 'Checked In') and (practitioner = $3 or patient = $4) and starts_min < $7 and ends_min > $6 limit 1",
+             and status in ('Scheduled', 'Checked In') and (practitioner = $3 or patient = $4) and int8range(starts_min, ends_min) && int8range($6, $7) limit 1",
         )
         .bind(tenant)
         .bind(day)

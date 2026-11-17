@@ -34,8 +34,11 @@ pub fn packages() -> std::result::Result<Vec<ferrum_meta::Package>, ferrum_meta:
     ferrum_meta::catalog::load_embedded(EMBEDDED)
 }
 
-/// Registers this app's document hooks.
+/// Registers this app's document hooks, and the words for its double-booking guard's refusals
+/// (packages/healthcare/sql/001_healthcare.sql).
 pub fn register(hooks: &mut HookRegistry) {
+    ferrum_kernel::error::set_constraint_message("healthcare_practitioner_free", "The practitioner is booked then");
+    ferrum_kernel::error::set_constraint_message("healthcare_patient_free", "The patient is booked then");
     hooks
         .register("Appointment", Arc::new(appointments::AppointmentHook))
         .register("Practitioner", Arc::new(appointments::PractitionerHook))

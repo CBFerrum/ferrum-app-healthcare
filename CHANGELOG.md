@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.3.5
+
+Needs the same platform as 0.3.4. A database change: two exclusion constraints on appointments (package SQL
+`sql/001_healthcare.sql`).
+
+- **One time, one visit, however many ask at once.** The clash check read the day's visits and then wrote, with nothing
+  to stop two requests from both reading before either wrote: fifty patients booking one practitioner's 10:00 online in
+  the same instant got up to ten visits, and one patient booked with fifty practitioners at once at the desk got up to
+  forty-four. Bookings of one practitioner, then of one patient, now take turns from the clash check to the end of their
+  transaction (their rows locked, in that order), so each sees the one before it and is refused at once in the hook's
+  words naming the other visit, or the page's "is not free". The database refuses the same overlap, a practitioner's or a
+  patient's visits still to come or under way (same day, minutes half-open), for any writer that does not pass the
+  check: "The practitioner is booked then" / "The patient is booked then". Without the turns, fifty bookings arriving
+  together were still kept to one by the database, but most of the others waited on each other and were refused as a
+  deadlock to retry or a query that took too long.
+- The hook's clash check reads overlap as the database does (ranges, half-open), and a visit whose type's minutes would
+  end it before it starts is refused by name instead of failing in the database.
+
 ## 0.3.4
 
 Needs the same platform as 0.3.3. No database change. Interface only, `ui/dist` rebuilt with Ferrum-Frontend `06bd1a2`.
