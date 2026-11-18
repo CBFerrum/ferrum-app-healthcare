@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.0
+
+Needs Ferrum 0.4.0 (apps' upkeep runs one workspace at a time, on whichever replica is free). No database or interface change.
+
+**Upkeep is one workspace's.** `maintenance(k, tenant)` and `maintenance_at(k, tenant, now)` do Healthcare's upkeep (appointment reminders, claims paid by the insurer) for the one workspace the platform hands them; the list of workspaces and the installation check are the platform's.
+
 ## 0.3.6
 
 Needs the platform's declared read recording (`record_reads` in an entity's definition). No database change.

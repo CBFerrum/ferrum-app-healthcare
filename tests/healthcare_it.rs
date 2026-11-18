@@ -85,7 +85,6 @@ async fn scenario() {
     ferrum_app_healthcare::register(&mut hooks);
     let k = Kernel::boot(db, catalog, hooks, KernelSettings::default(), None).await.expect("boot");
     ferrum_domain::maintenance(&k).await.expect("partitions");
-    ferrum_app_erp::maintenance(&k).await.expect("partitions");
     let tenant = k
         .create_tenant(NewTenant {
             slug: "clinic".into(),
@@ -391,8 +390,8 @@ async fn scenario() {
     let wednesday = (monday + chrono::Duration::days(2)).to_string();
     let later_visit = uid(&t.k.insert(&desk, "Appointment", book(cleo, mira, general, &wednesday, "14:00")).await.expect("Wednesday")["id"]);
     let eve = (monday - chrono::Duration::days(1)).and_hms_opt(10, 0, 0).unwrap();
-    ferrum_app_healthcare::maintenance_at(&k, eve).await.expect("upkeep");
-    ferrum_app_healthcare::maintenance_at(&k, eve).await.expect("upkeep again");
+    ferrum_app_healthcare::maintenance_at(&k, tenant, eve).await.expect("upkeep");
+    ferrum_app_healthcare::maintenance_at(&k, tenant, eve).await.expect("upkeep again");
     let mails = |to: &'static str| {
         let k = k.clone();
         async move {
@@ -541,11 +540,11 @@ async fn scenario() {
     let claim3 = uid(&paid["claim"]["id"]);
     let theirs3 = uid(&t.get("InsuranceClaim", claim3).await["sales_invoice"]);
     t.k.submit(&a, "SalesInvoice", theirs3, None).await.unwrap();
-    ferrum_app_healthcare::maintenance_at(&k, eve).await.unwrap();
+    ferrum_app_healthcare::maintenance_at(&k, tenant, eve).await.unwrap();
     assert_eq!(t.get("InsuranceClaim", claim3).await["status"], "Submitted", "sent, not paid yet");
     let pay = t.k.run_action(&a, "SalesInvoice", theirs3, "make_payment", Value::Null).await.expect("a payment");
     t.k.submit(&a, "PaymentEntry", uid(&pay["id"]), None).await.expect("paid");
-    ferrum_app_healthcare::maintenance_at(&k, eve).await.unwrap();
+    ferrum_app_healthcare::maintenance_at(&k, tenant, eve).await.unwrap();
     assert_eq!(t.get("InsuranceClaim", claim3).await["status"], "Paid");
     refused(t.k.run_action(&desk, "InsuranceClaim", claim3, "reject", json!({"reason": "late"})).await, "invalid", "not available");
 }
