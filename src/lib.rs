@@ -53,35 +53,20 @@ pub fn reports() -> Vec<Arc<dyn ReportSource>> {
     vec![]
 }
 
-/// Upkeep: nothing runs by itself.
-pub async fn maintenance(k: &Kernel) -> Result<()> {
-    upkeep_all(k, None).await
+/// One workspace's upkeep, which the platform runs about once a minute where Healthcare is installed, on whichever
+/// replica is free, and may run again.
+pub async fn maintenance(k: &Kernel, tenant: uuid::Uuid) -> Result<()> {
+    upkeep(k, tenant, None).await
 }
 
-/// Upkeep as if every workspace's clock read `now` (its local time): for tests.
-pub async fn maintenance_at(k: &Kernel, now: chrono::NaiveDateTime) -> Result<()> {
-    upkeep_all(k, Some(now)).await
+/// Upkeep as if the workspace's clock read `now` (its local time): for tests.
+pub async fn maintenance_at(k: &Kernel, tenant: uuid::Uuid, now: chrono::NaiveDateTime) -> Result<()> {
+    upkeep(k, tenant, Some(now)).await
 }
 
-async fn upkeep_all(k: &Kernel, now: Option<chrono::NaiveDateTime>) -> Result<()> {
-    let mut tx = k.db.system_tx().await?;
-    let tenants: Vec<uuid::Uuid> = sqlx::query_scalar("select id from tenant where status = 'active' order by id").fetch_all(&mut *tx).await?;
-    tx.commit().await?;
-    let mut first_error: Option<ferrum_kernel::Error> = None;
-    for tenant in tenants {
-        match k.registry.schema(tenant).await {
-            Ok(s) if s.packages.iter().any(|p| p == "healthcare") => {
-                if let Err(e) = reminders::upkeep(k, tenant, s, now).await {
-                    first_error.get_or_insert(e);
-                }
-            }
-            Ok(_) => {}
-            Err(e) => {
-                first_error.get_or_insert(e);
-            }
-        }
-    }
-    first_error.map_or(Ok(()), Err)
+async fn upkeep(k: &Kernel, tenant: uuid::Uuid, now: Option<chrono::NaiveDateTime>) -> Result<()> {
+    let schema = k.registry.schema(tenant).await?;
+    reminders::upkeep(k, tenant, schema, now).await
 }
 
 /// A document from JSON.

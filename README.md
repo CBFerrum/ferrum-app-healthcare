@@ -52,7 +52,7 @@ insurers' shares claimed. It is for small and medium clinics that want a front d
 | **Version** | 0.3.5 |
 | **Kind** | Its own interface at `/healthcare/` (the day by practitioner, public booking page, patients' portal pages), with every record in Ferrum's lists and forms |
 | **What it adds** | 10 record types (8 documents, 1 child table, 1 settings record), 4 roles (one for the portal), 1 menu |
-| **Depends on** | Ferrum platform `>=0.3.2, <0.4`; ERP `>=0.28.3` (installing Healthcare installs ERP) |
+| **Depends on** | Ferrum platform `>=0.4.0, <0.5`; ERP `>=0.28.3` (installing Healthcare installs ERP) |
 | **Works with** | ERP (customers, items, companies, sales invoices, credit notes) |
 | **Languages** | English, Arabic, Hindi (words and record names); right-to-left layout |
 | **Tests** | 5 Rust tests (one walks a week at a clinic on PostgreSQL, two book a time fifty times at once) and a UI suite |
@@ -397,6 +397,7 @@ Whether a clinic meets health-data law depends on how it is run, not on the soft
 - [ ] Reports: collections, no-show rate, practitioner load and receivables by insurer.
 
 **Trust**
+- [x] **0.4.0** Upkeep runs one workspace at a time, on whichever replica is free; needs Ferrum 0.4.0.
 - [x] **0.3.6** A log of who opened a patient record, appointment, consent or claim, on by default.
 - [ ] Break-glass access to a patient record.
 - [ ] Intake forms before the visit and signed consent.
@@ -422,7 +423,7 @@ Whether a clinic meets health-data law depends on how it is run, not on the soft
 ## 🚀 Install
 
 Healthcare is a native Ferrum app: the Ferrum server includes it (`runtime: native`) and a workspace turns it on from
-**App Manager**. It needs platform `>=0.3.2, <0.4`. Installing it installs **ERP**, which holds customers, items and
+**App Manager**. It needs platform `>=0.4.0, <0.5`. Installing it installs **ERP**, which holds customers, items and
 invoices.
 
 After installing:
